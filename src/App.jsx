@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
-const API_URL = "https://spinach-monitor-deflation.ngrok-free.app";
-
+const API_URL = "https://web-production-3381d.up.railway.app";
 const allowedUnites = [
   "pi²", "m²", "pi", "plin", "mlin", "unité", "global", "sem", "/1000$", "m³",
 ];
