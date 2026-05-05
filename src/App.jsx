@@ -490,7 +490,7 @@ export default function App() {
 
   const Nav = () => (
     <nav style={styles.nav}>
-      <div style={styles.navLogo}>Ad Budget</div>
+      <div style={styles.navLogo}>Ad BUD</div>
       <div style={styles.navUser}>
         <span>👤 {user?.nom}</span>
         <button style={styles.navLogout} onClick={handleLogout}>Déconnexion</button>
@@ -504,7 +504,7 @@ export default function App() {
     return (
       <div style={styles.loginPage}>
         <div style={styles.loginCard}>
-          <div style={styles.loginLogo}>Ad Budget</div>
+          <div style={styles.loginLogo}>Ad BUD</div>
           <p style={styles.loginSubtitle}>Outil de budgétisation de construction</p>
           <label style={styles.loginLabel}>Email</label>
           <input type="email" placeholder="ton@email.com" value={loginEmail}
