@@ -241,11 +241,21 @@ export default function App() {
   const [globalParams, setGlobalParams] = useState({
     mobilisation: "", surfacePlancher: "", hauteurCloisons: "", longueurCloisons: "",
   });
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [pdfFilters, setPdfFilters] = useState({
+    inactifs: false, avecPrix: true, sections: new Set(),
+  });
 
   const surfaceMur = useMemo(() => {
     return normalizeNumber(globalParams.hauteurCloisons) * normalizeNumber(globalParams.longueurCloisons);
   }, [globalParams.hauteurCloisons, globalParams.longueurCloisons]);
   const surfaceGypse = surfaceMur * 2;
+
+  const uniqueSections = useMemo(() => {
+    const set = new Set();
+    lignes.forEach((l) => l.section && set.add(l.section));
+    return [...set].sort();
+  }, [lignes]);
 
   const surfaceMurRef = useRef(surfaceMur);
   const surfaceGypseRef = useRef(surfaceGypse);
@@ -414,6 +424,41 @@ export default function App() {
     } catch {
       setAutosaveStatus("erreur ✗");
     }
+  }
+
+  function openPdfModal() {
+    setPdfFilters({
+      inactifs: false,
+      avecPrix: true,
+      sections: new Set(uniqueSections),
+    });
+    setShowPdfModal(true);
+  }
+
+  function togglePdfSection(sec) {
+    setPdfFilters((prev) => {
+      const next = new Set(prev.sections);
+      if (next.has(sec)) next.delete(sec);
+      else next.add(sec);
+      return { ...prev, sections: next };
+    });
+  }
+
+  function generatePdf() {
+    if (!projetActif) return;
+    const params = new URLSearchParams();
+    params.set("actifs_seulement", String(!pdfFilters.inactifs));
+    params.set("avec_prix", String(pdfFilters.avecPrix));
+    const allSelected = pdfFilters.sections.size === uniqueSections.length;
+    if (!allSelected && pdfFilters.sections.size > 0) {
+      params.set("sections", [...pdfFilters.sections].join(","));
+    }
+    if (globalParams.mobilisation) params.set("mobilisation", globalParams.mobilisation);
+    if (globalParams.surfacePlancher) params.set("surface_plancher", globalParams.surfacePlancher);
+    if (globalParams.hauteurCloisons) params.set("hauteur_cloisons", globalParams.hauteurCloisons);
+    if (globalParams.longueurCloisons) params.set("longueur_cloisons", globalParams.longueurCloisons);
+    window.open(`${API_URL}/budget/projets/${projetActif.id}/pdf?${params}`, "_blank");
+    setShowPdfModal(false);
   }
 
   async function autoSaveLigne(id) {
@@ -701,6 +746,13 @@ export default function App() {
                 </span>
               )}
               <button
+                onClick={openPdfModal}
+                style={styles.btnSecondary}
+                title="Générer un rapport PDF"
+              >
+                📄 Rapport PDF
+              </button>
+              <button
                 onClick={() => window.open(`${API_URL}/budget/projets/${projetActif.id}/export`, "_blank")}
                 style={styles.btnSecondary}
                 title="Télécharger le budget en Excel"
@@ -884,6 +936,79 @@ export default function App() {
             </div>
           )}
         </div>
+        {showPdfModal && (
+          <div style={{
+            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(15,23,42,0.5)", display: "flex",
+            alignItems: "center", justifyContent: "center", zIndex: 1000,
+          }} onClick={() => setShowPdfModal(false)}>
+            <div onClick={(e) => e.stopPropagation()}
+              style={{
+                background: "#fff", borderRadius: 12, padding: 24,
+                width: 460, maxWidth: "90vw", maxHeight: "85vh",
+                overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+              }}>
+              <h2 style={{ margin: "0 0 16px", color: "#1e3a8a", fontSize: 18 }}>
+                📄 Générer un rapport PDF
+              </h2>
+              <label style={{ display: "flex", alignItems: "center", gap: 8,
+                              marginBottom: 10, fontSize: 13, cursor: "pointer" }}>
+                <input type="checkbox" checked={pdfFilters.inactifs}
+                  onChange={(e) => setPdfFilters((p) => ({ ...p, inactifs: e.target.checked }))} />
+                Inclure les lignes inactives
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 8,
+                              marginBottom: 14, fontSize: 13, cursor: "pointer" }}>
+                <input type="checkbox" checked={pdfFilters.avecPrix}
+                  onChange={(e) => setPdfFilters((p) => ({ ...p, avecPrix: e.target.checked }))} />
+                Inclure les prix (sinon mode sous-traitant : sans prix ni notes)
+              </label>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#1e3a8a",
+                            marginBottom: 6, marginTop: 4 }}>
+                Sections à inclure ({pdfFilters.sections.size} / {uniqueSections.length})
+              </div>
+              <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                <button onClick={() => setPdfFilters((p) => ({ ...p, sections: new Set(uniqueSections) }))}
+                  style={{ ...styles.btnSecondary, padding: "4px 10px", fontSize: 12 }}>
+                  Tout cocher
+                </button>
+                <button onClick={() => setPdfFilters((p) => ({ ...p, sections: new Set() }))}
+                  style={{ ...styles.btnSecondary, padding: "4px 10px", fontSize: 12 }}>
+                  Tout décocher
+                </button>
+              </div>
+              <div style={{ maxHeight: 220, overflowY: "auto",
+                            border: "1px solid #e2e8f0", borderRadius: 6,
+                            padding: 8, marginBottom: 16 }}>
+                {uniqueSections.length === 0 ? (
+                  <div style={{ fontSize: 12, color: "#64748b" }}>Aucune section.</div>
+                ) : uniqueSections.map((s) => (
+                  <label key={s} style={{ display: "flex", alignItems: "center",
+                                          gap: 8, fontSize: 12, padding: "3px 0",
+                                          cursor: "pointer" }}>
+                    <input type="checkbox" checked={pdfFilters.sections.has(s)}
+                      onChange={() => togglePdfSection(s)} />
+                    {s}
+                  </label>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <button onClick={() => setShowPdfModal(false)} style={styles.btnSecondary}>
+                  Annuler
+                </button>
+                <button onClick={generatePdf}
+                  disabled={pdfFilters.sections.size === 0}
+                  style={{
+                    ...styles.btnPrimary,
+                    opacity: pdfFilters.sections.size === 0 ? 0.5 : 1,
+                    cursor: pdfFilters.sections.size === 0 ? "not-allowed" : "pointer",
+                  }}>
+                  Générer le PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
