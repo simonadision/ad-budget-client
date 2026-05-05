@@ -229,6 +229,8 @@ export default function App() {
   const [autosaveStatus, setAutosaveStatus] = useState("");
   const [collapsedBudget, setCollapsedBudget] = useState(new Set());
   const autosaveTimers = useRef({});
+  const [notes, setNotes] = useState("");
+  const notesTimer = useRef(null);
   const [loading, setLoading] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginNom, setLoginNom] = useState("");
@@ -327,6 +329,7 @@ export default function App() {
 
   async function ouvrirProjet(projet) {
     setProjetActif(projet);
+    setNotes(projet.notes ?? "");
     setLoading(true);
     setEdits({});
     setActiveItems(new Set());
@@ -389,6 +392,28 @@ export default function App() {
     if (autosaveTimers.current[id]) clearTimeout(autosaveTimers.current[id]);
     setAutosaveStatus("en attente de sauvegarde…");
     autosaveTimers.current[id] = setTimeout(() => autoSaveLigne(id), AUTOSAVE_DELAY);
+  }
+
+  function updateNotes(value) {
+    setNotes(value);
+    if (notesTimer.current) clearTimeout(notesTimer.current);
+    setAutosaveStatus("en attente de sauvegarde…");
+    notesTimer.current = setTimeout(() => saveNotes(value), AUTOSAVE_DELAY);
+  }
+
+  async function saveNotes(value) {
+    if (!projetActif) return;
+    try {
+      await fetch(`${API_URL}/budget/projets/${projetActif.id}/notes`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: value }),
+      });
+      setAutosaveStatus("sauvegardé ✓");
+      setTimeout(() => setAutosaveStatus(""), 2000);
+    } catch {
+      setAutosaveStatus("erreur ✗");
+    }
   }
 
   async function autoSaveLigne(id) {
@@ -672,6 +697,19 @@ export default function App() {
             ))}
             <div style={styles.statBadge}>Surface mur : {surfaceMur.toFixed(2)} pi²</div>
             <div style={styles.statBadge}>Surface gypse : {surfaceGypse.toFixed(2)} pi²</div>
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600,
+                            color: "#1e3a8a", marginBottom: 6 }}>
+              Notes du projet
+            </label>
+            <textarea value={notes} onChange={(e) => updateNotes(e.target.value)}
+              placeholder="Notes, contexte, rappels pour ce projet…"
+              style={{ width: "100%", minHeight: 80, padding: 10, fontSize: 13,
+                       fontFamily: "inherit", borderRadius: 8,
+                       border: "1px solid #cbd5e1", resize: "vertical",
+                       boxSizing: "border-box" }} />
           </div>
 
           {loading ? <p style={styles.loading}>Chargement…</p> : (
