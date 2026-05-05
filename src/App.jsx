@@ -690,15 +690,24 @@ export default function App() {
               {projetActif?.client && <p style={{ color: "#64748b", margin: 0, fontSize: 13 }}>👤 {projetActif.client}</p>}
               {projetActif?.adresse && <p style={{ color: "#64748b", margin: "2px 0 0", fontSize: 13 }}>📍 {projetActif.adresse}</p>}
             </div>
-            {autosaveStatus && (
-              <span style={{
-                ...styles.autosaveStatus,
-                color: autosaveStatus.includes("✓") ? "#16a34a"
-                  : autosaveStatus.includes("✗") ? "#ef4444" : "#64748b",
-              }}>
-                {autosaveStatus}
-              </span>
-            )}
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              {autosaveStatus && (
+                <span style={{
+                  ...styles.autosaveStatus,
+                  color: autosaveStatus.includes("✓") ? "#16a34a"
+                    : autosaveStatus.includes("✗") ? "#ef4444" : "#64748b",
+                }}>
+                  {autosaveStatus}
+                </span>
+              )}
+              <button
+                onClick={() => window.open(`${API_URL}/budget/projets/${projetActif.id}/export`, "_blank")}
+                style={styles.btnSecondary}
+                title="Télécharger le budget en Excel"
+              >
+                📥 Exporter Excel
+              </button>
+            </div>
           </div>
 
           {/* Paramètres globaux */}
