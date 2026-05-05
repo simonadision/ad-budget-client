@@ -272,13 +272,19 @@ export default function App() {
           setLoading(false);
           return;
         }
-        const createRes = await fetch(`${API_URL}/budget/users`, {
+       const createRes = await fetch(`${API_URL}/budget/users`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ nom: loginNom, email: loginEmail, role: "user" }),
         });
+        if (!createRes.ok) {
+          const err = await createRes.json();
+          setLoginError(err.detail || "Acces refuse. Email non autorise.");
+          setLoading(false);
+          return;
+        }
         const created = await createRes.json();
-        setUser(created.user);
-        localStorage.setItem("ad_budget_user", JSON.stringify(created.user));
+        setUser(created);
+        localStorage.setItem("ad_budget_user", JSON.stringify(created));
         setProjets([]);
         setPage("projets");
       }
