@@ -245,6 +245,9 @@ export default function App() {
   const [pdfFilters, setPdfFilters] = useState({
     inactifs: false, avecPrix: true, sections: new Set(),
   });
+  const [adminItems, setAdminItems] = useState([]);
+  const [adminEdits, setAdminEdits] = useState({});
+  const adminTimers = useRef({});
 
   const surfaceMur = useMemo(() => {
     return normalizeNumber(globalParams.hauteurCloisons) * normalizeNumber(globalParams.longueurCloisons);
@@ -325,6 +328,10 @@ export default function App() {
   useEffect(() => {
     if (user && page === "projets") loadProjets(user.id);
   }, []);
+
+  useEffect(() => {
+    if (page === "admin" && user?.email) loadAdminItems();
+  }, [page]);
 
   async function creerProjet() {
     if (!nouveauProjet.nom.trim()) { alert("Le nom du projet est requis."); return; }
@@ -461,6 +468,93 @@ export default function App() {
     setShowPdfModal(false);
   }
 
+  async function loadAdminItems() {
+    if (!user?.email) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/budget/admin/items?email=${encodeURIComponent(user.email)}`);
+      if (res.status === 403) {
+        alert("Accès admin requis. Contacte l'administrateur pour obtenir le rôle.");
+        setPage("projets");
+        return;
+      }
+      const data = await res.json();
+      setAdminItems(Array.isArray(data) ? data : []);
+      setAdminEdits({});
+    } catch {
+      alert("Erreur lors du chargement de la BD maître.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function adminUpdateEdit(id, field, value) {
+    const cleaned = field === "prix_unitaire" ? String(value).replace(",", ".") : value;
+    setAdminEdits((prev) => ({ ...prev, [id]: { ...prev[id], [field]: cleaned } }));
+    if (adminTimers.current[id]) clearTimeout(adminTimers.current[id]);
+    setAutosaveStatus("en attente de sauvegarde…");
+    adminTimers.current[id] = setTimeout(() => adminSaveItem(id), AUTOSAVE_DELAY);
+  }
+
+  async function adminSaveItem(id) {
+    const item = adminItems.find((i) => i.id === id);
+    if (!item) return;
+    const edit = adminEdits[id] || {};
+    const payload = {};
+    for (const f of ["section", "division", "description", "unite", "note"]) {
+      if (f in edit) payload[f] = edit[f];
+    }
+    if ("prix_unitaire" in edit) {
+      payload.prix_unitaire = normalizeNumber(edit.prix_unitaire);
+    }
+    if (Object.keys(payload).length === 0) return;
+    try {
+      const res = await fetch(
+        `${API_URL}/budget/admin/items/${id}?email=${encodeURIComponent(user.email)}`,
+        { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      );
+      if (!res.ok) throw new Error("Erreur");
+      setAdminItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...payload } : i)));
+      setAdminEdits((prev) => { const next = { ...prev }; delete next[id]; return next; });
+      setAutosaveStatus("sauvegardé ✓");
+      setTimeout(() => setAutosaveStatus(""), 2000);
+    } catch {
+      setAutosaveStatus("erreur ✗");
+    }
+  }
+
+  async function adminCreateItem() {
+    try {
+      const res = await fetch(
+        `${API_URL}/budget/admin/items?email=${encodeURIComponent(user.email)}`,
+        {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ section: "Divers", description: "Nouvel item",
+                                 unite: "global", prix_unitaire: 0 }),
+        },
+      );
+      if (!res.ok) throw new Error("Erreur");
+      const data = await res.json();
+      setAdminItems((prev) => [data.item, ...prev]);
+    } catch {
+      alert("Erreur lors de la création.");
+    }
+  }
+
+  async function adminDeleteItem(id, label) {
+    if (!confirm(`Supprimer l'item "${label}" de la BD maître ?\n\nCette action est irréversible et n'affecte pas les projets existants.`)) return;
+    try {
+      const res = await fetch(
+        `${API_URL}/budget/admin/items/${id}?email=${encodeURIComponent(user.email)}`,
+        { method: "DELETE" },
+      );
+      if (!res.ok) throw new Error("Erreur");
+      setAdminItems((prev) => prev.filter((i) => i.id !== id));
+    } catch {
+      alert("Erreur lors de la suppression.");
+    }
+  }
+
   async function autoSaveLigne(id) {
     const ligne = lignes.find((l) => l.id === id);
     if (!ligne) return;
@@ -563,6 +657,9 @@ export default function App() {
       <div style={styles.navLogo}>Ad BUD</div>
       <div style={styles.navUser}>
         <span>👤 {user?.nom}</span>
+        {user?.role === "admin" && page !== "admin" && (
+          <button style={styles.navLogout} onClick={() => setPage("admin")}>🛠️ Admin</button>
+        )}
         <button style={styles.navLogout} onClick={handleLogout}>Déconnexion</button>
       </div>
     </nav>
@@ -1009,6 +1106,115 @@ export default function App() {
             </div>
           </div>
         )}
+      </div>
+    );
+  }
+
+  if (page === "admin") {
+    const adminVal = (item, field, fallback = "") => {
+      const e = adminEdits[item.id];
+      return e && field in e ? e[field] : (item[field] ?? fallback);
+    };
+    return (
+      <div style={styles.app}>
+        <Nav />
+        <div style={styles.page}>
+          <button style={styles.btnBack} onClick={() => { setPage("projets"); loadProjets(user.id); }}>
+            ← Mes projets
+          </button>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <h1 style={{ ...styles.pageTitle, marginBottom: 0 }}>🛠️ Admin — BD maître</h1>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              {autosaveStatus && (
+                <span style={{
+                  ...styles.autosaveStatus,
+                  color: autosaveStatus.includes("✓") ? "#16a34a"
+                    : autosaveStatus.includes("✗") ? "#ef4444" : "#64748b",
+                }}>{autosaveStatus}</span>
+              )}
+              <button style={styles.btnPrimary} onClick={adminCreateItem}>+ Ajouter un item</button>
+            </div>
+          </div>
+          <p style={{ fontSize: 13, color: "#64748b", marginTop: 0, marginBottom: 12 }}>
+            Édition inline sauvegardée 3s après la dernière frappe. Les modifications n'affectent pas les projets existants — uniquement les nouveaux projets créés ensuite.
+          </p>
+          {loading ? <p style={styles.loading}>Chargement…</p> : (
+            <div style={styles.card}>
+              {adminItems.length === 0 ? (
+                <p style={styles.emptyMsg}>Aucun item dans la BD maître.</p>
+              ) : (
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ ...styles.table, width: "100%" }}>
+                    <thead>
+                      <tr>
+                        <th style={styles.th}>Section</th>
+                        <th style={styles.th}>Division</th>
+                        <th style={styles.th}>Description</th>
+                        <th style={styles.th}>Unité</th>
+                        <th style={styles.th}>Prix unit.</th>
+                        <th style={styles.th}>Note</th>
+                        <th style={{ ...styles.th, width: 50 }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {adminItems.map((item) => (
+                        <tr key={item.id}>
+                          <td style={{ ...styles.td, width: 100 }}>
+                            <input type="text" value={adminVal(item, "section")}
+                              onChange={(e) => adminUpdateEdit(item.id, "section", e.target.value)}
+                              style={styles.input} />
+                          </td>
+                          <td style={{ ...styles.td, width: 100 }}>
+                            <input type="text" value={adminVal(item, "division")}
+                              onChange={(e) => adminUpdateEdit(item.id, "division", e.target.value)}
+                              style={styles.input} />
+                          </td>
+                          <td style={styles.td}>
+                            <input type="text" value={adminVal(item, "description")}
+                              onChange={(e) => adminUpdateEdit(item.id, "description", e.target.value)}
+                              style={styles.input} />
+                          </td>
+                          <td style={{ ...styles.td, width: 90 }}>
+                            <select value={adminVal(item, "unite", "global")}
+                              onChange={(e) => adminUpdateEdit(item.id, "unite", e.target.value)}
+                              style={styles.select}>
+                              {allowedUnites.map((u) => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                          </td>
+                          <td style={{ ...styles.td, width: 105 }}>
+                            <input type="text" inputMode="decimal"
+                              value={adminEdits[item.id]?.prix_unitaire
+                                ?? Number(item.prix_unitaire || 0).toFixed(2)}
+                              onChange={(e) => adminUpdateEdit(item.id, "prix_unitaire", e.target.value)}
+                              style={styles.input} />
+                          </td>
+                          <td style={styles.td}>
+                            <input type="text" value={adminVal(item, "note")}
+                              onChange={(e) => adminUpdateEdit(item.id, "note", e.target.value)}
+                              style={styles.input} />
+                          </td>
+                          <td style={{ ...styles.td, width: 50, textAlign: "center" }}>
+                            <button onClick={() => adminDeleteItem(item.id, item.description)}
+                              style={{ background: "transparent", border: "none", cursor: "pointer",
+                                       fontSize: 14, color: "#94a3b8", padding: 4, borderRadius: 4 }}
+                              title="Supprimer cet item"
+                              onMouseEnter={(e) => { e.currentTarget.style.color = "#ef4444"; e.currentTarget.style.background = "#fee2e2"; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.color = "#94a3b8"; e.currentTarget.style.background = "transparent"; }}>
+                              🗑️
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <div style={{ padding: "12px 16px", color: "#64748b", fontSize: 12 }}>
+                {adminItems.length} item(s) dans la BD maître
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
