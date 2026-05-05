@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 const API_URL = "https://web-production-3381d.up.railway.app";
+
 const allowedUnites = [
   "pi²", "m²", "pi", "plin", "mlin", "unité", "global", "sem", "/1000$", "m³",
 ];
@@ -524,9 +525,31 @@ export default function App() {
           <h1 style={styles.pageTitle}>Mes projets</h1>
           <div style={styles.projetsGrid}>
             {projets.map((p) => (
-              <div key={p.id} style={styles.projetCard} onClick={() => ouvrirProjet(p)}
+              <div key={p.id} style={{ ...styles.projetCard, position: "relative" }} onClick={() => ouvrirProjet(p)}
                 onMouseEnter={(e) => e.currentTarget.style.borderColor = "#2563eb"}
                 onMouseLeave={(e) => e.currentTarget.style.borderColor = "transparent"}>
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (!confirm(`Supprimer le projet "${p.nom}" ?\n\nCette action est irréversible.`)) return;
+                    try {
+                      const res = await fetch(`${API_URL}/budget/projets/${p.id}`, { method: "DELETE" });
+                      if (!res.ok) throw new Error("Erreur");
+                      setProjets(projets.filter(x => x.id !== p.id));
+                    } catch (err) {
+                      alert("Erreur lors de la suppression.");
+                    }
+                  }}
+                  style={{
+                    position: "absolute", top: 8, right: 8,
+                    background: "transparent", border: "none",
+                    cursor: "pointer", fontSize: 16, color: "#94a3b8",
+                    padding: 4, lineHeight: 1, borderRadius: 4
+                  }}
+                  title="Supprimer ce projet"
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "#ef4444"; e.currentTarget.style.background = "#fee2e2"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = "#94a3b8"; e.currentTarget.style.background = "transparent"; }}
+                >🗑️</button>
                 <div style={styles.projetCardTitle}>{p.nom}</div>
                 {p.client && <div style={styles.projetCardInfo}>👤 {p.client}</div>}
                 {p.adresse && <div style={styles.projetCardInfo}>📍 {p.adresse}</div>}
