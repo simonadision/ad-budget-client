@@ -562,6 +562,27 @@ export default function App() {
                 <button
                   onClick={async (e) => {
                     e.stopPropagation();
+                    try {
+                      const res = await fetch(`${API_URL}/budget/projets/${p.id}/duplicate`, { method: "POST" });
+                      if (!res.ok) throw new Error("Erreur");
+                      await loadProjets(user.id);
+                    } catch (err) {
+                      alert("Erreur lors de la duplication.");
+                    }
+                  }}
+                  style={{
+                    position: "absolute", top: 8, right: 36,
+                    background: "transparent", border: "none",
+                    cursor: "pointer", fontSize: 16, color: "#94a3b8",
+                    padding: 4, lineHeight: 1, borderRadius: 4
+                  }}
+                  title="Dupliquer ce projet"
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "#2563eb"; e.currentTarget.style.background = "#dbeafe"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = "#94a3b8"; e.currentTarget.style.background = "transparent"; }}
+                >📋</button>
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
                     if (!confirm(`Supprimer le projet "${p.nom}" ?\n\nCette action est irréversible.`)) return;
                     try {
                       const res = await fetch(`${API_URL}/budget/projets/${p.id}`, { method: "DELETE" });
