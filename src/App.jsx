@@ -1,4 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  authFetch,
+  captureTokenFromUrl,
+  clearJwt,
+  getJwt,
+  redirectToLogin,
+  redirectToLogout,
+} from "./auth.js";
 
 const API_URL = "https://web-production-3381d.up.railway.app";
 
@@ -314,11 +322,12 @@ function statutColor(statut) {
 // ─── App ───────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [page, setPage] = useState(() => localStorage.getItem("ad_budget_user") ? "projets" : "login");
-  const [user, setUser] = useState(() => {
-    const s = localStorage.getItem("ad_budget_user");
-    return s ? JSON.parse(s) : null;
-  });
+  // SSO bootstrap : on capture ?token=, on valide via /auth/me, sinon
+  // redirection vers le dashboard. Tant que l'auth n'est pas résolue,
+  // on reste en authStatus="loading" et on n'affiche rien.
+  const [authStatus, setAuthStatus] = useState("loading"); // "loading" | "ready"
+  const [user, setUser] = useState(null);
+  const [page, setPage] = useState("projets");
   const [projets, setProjets] = useState([]);
   const [projetActif, setProjetActif] = useState(null);
   const [lignes, setLignes] = useState([]);
@@ -399,9 +408,6 @@ export default function App() {
   const [infoEdits, setInfoEdits] = useState({});
   const [infoSaving, setInfoSaving] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginNom, setLoginNom] = useState("");
-  const [loginError, setLoginError] = useState("");
   const [nouveauProjet, setNouveauProjet] = useState({
     nom: "", adresse: "", description: "", statut: "en cours",
     nom_client: "", contact_client: "", email_client: "", telephone_client: "",
@@ -442,67 +448,58 @@ export default function App() {
     surfaceGypseRef.current = surfaceGypse;
   }, [surfaceMur, surfaceGypse]);
 
-  // ── Login ────────────────────────────────────────────────────────────────
+  // ── Auth SSO ─────────────────────────────────────────────────────────────
+  // Au load : on capture ?token= dans l'URL (issu du dashboard), on valide
+  // côté backend via /auth/me, et on récupère le user local ad_budget.users
+  // (auto-provisionné si premier login SSO). Pas de JWT ou JWT invalide →
+  // redirection vers le dashboard /login.
 
-  async function handleLogin() {
-    if (!loginEmail.trim()) { setLoginError("Email requis."); return; }
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_URL}/budget/users`);
-      const users = await res.json();
-      const found = users.find((u) => u.email.toLowerCase() === loginEmail.trim().toLowerCase());
-      if (found) {
-        setUser(found);
-        localStorage.setItem("ad_budget_user", JSON.stringify(found));
-        await loadProjets(found.id);
-        setPage("projets");
-      } else {
-        if (!loginNom.trim()) {
-          setLoginError("Utilisateur non trouvé. Entre ton nom pour créer un compte.");
-          setLoading(false);
-          return;
-        }
-       const createRes = await fetch(`${API_URL}/budget/users`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nom: loginNom, email: loginEmail, role: "user" }),
-        });
-        if (!createRes.ok) {
-          const err = await createRes.json();
-          setLoginError(err.detail || "Acces refuse. Email non autorise.");
-          setLoading(false);
-          return;
-        }
-        const created = await createRes.json();
-        setUser(created);
-        localStorage.setItem("ad_budget_user", JSON.stringify(created));
-        setProjets([]);
-        setPage("projets");
+  useEffect(() => {
+    let cancelled = false;
+    async function bootstrap() {
+      captureTokenFromUrl();
+      const token = getJwt();
+      if (!token) {
+        redirectToLogin();
+        return;
       }
-    } catch {
-      setLoginError("Erreur de connexion à l'API.");
-    } finally {
-      setLoading(false);
+      try {
+        // authFetch ajoute automatiquement Authorization: Bearer <token>
+        // et redirige vers le dashboard sur 401 (JWT invalide / expiré).
+        const res = await authFetch(`${API_URL}/auth/me`);
+        if (!res.ok) {
+          // 403 = JWT valide mais pas de module ad_bud, ou autre refus.
+          clearJwt();
+          redirectToLogin();
+          return;
+        }
+        const me = await res.json();
+        if (cancelled) return;
+        setUser(me);
+        setAuthStatus("ready");
+        // Premier chargement des projets dès qu'on a le user.
+        try { await loadProjets(me.id); } catch { /* l'UI affichera vide */ }
+      } catch {
+        // Erreur réseau : on reste en loading, l'utilisateur peut retry.
+        // Pas de redirection brutale (le backend peut juste être down 2s).
+        if (!cancelled) setAuthStatus("error");
+      }
     }
-  }
+    bootstrap();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleLogout() {
-    setUser(null);
-    localStorage.removeItem("ad_budget_user");
-    setPage("login");
-    setLoginEmail("");
-    setLoginNom("");
+    redirectToLogout();
   }
 
   // ── Projets ──────────────────────────────────────────────────────────────
 
   async function loadProjets(userId) {
-    const res = await fetch(`${API_URL}/budget/projets?user_id=${userId}`);
+    const res = await authFetch(`${API_URL}/budget/projets?user_id=${userId}`);
     setProjets(await res.json());
   }
-
-  useEffect(() => {
-    if (user && page === "projets") loadProjets(user.id);
-  }, []);
 
   useEffect(() => {
     if (page === "admin" && user?.email) loadAdminItems();
@@ -510,7 +507,7 @@ export default function App() {
 
   async function creerProjet() {
     if (!nouveauProjet.nom.trim()) { alert("Le nom du projet est requis."); return; }
-    const res = await fetch(`${API_URL}/budget/projets`, {
+    const res = await authFetch(`${API_URL}/budget/projets`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...nouveauProjet, user_id: user.id }),
     });
@@ -529,7 +526,7 @@ export default function App() {
     setEdits({});
     setActiveItems(new Set());
     try {
-      const lignesRes = await fetch(`${API_URL}/budget/projets/${projet.id}/lignes`);
+      const lignesRes = await authFetch(`${API_URL}/budget/projets/${projet.id}/lignes`);
       const lignesData = await lignesRes.json();
       setLignes(lignesData);
       setActiveItems(new Set(lignesData.filter((l) => l.actif !== false).map((l) => l.id)));
@@ -599,7 +596,7 @@ export default function App() {
   async function saveNotes(value) {
     if (!projetActif) return;
     try {
-      await fetch(`${API_URL}/budget/projets/${projetActif.id}/notes`, {
+      await authFetch(`${API_URL}/budget/projets/${projetActif.id}/notes`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notes: value }),
@@ -629,7 +626,7 @@ export default function App() {
     if (!projetActif) return;
     const num = normalizeNumber(rawValue);
     try {
-      const res = await fetch(`${API_URL}/budget/projets/${projetActif.id}`, {
+      const res = await authFetch(`${API_URL}/budget/projets/${projetActif.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ [field]: num }),
@@ -698,7 +695,7 @@ export default function App() {
     if (!projetActif) return;
     setInfoSaving(true);
     try {
-      const res = await fetch(`${API_URL}/budget/projets/${projetActif.id}`, {
+      const res = await authFetch(`${API_URL}/budget/projets/${projetActif.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(infoEdits),
@@ -809,6 +806,11 @@ export default function App() {
     if (globalParams.surfacePlancher) params.set("surface_plancher", globalParams.surfacePlancher);
     if (globalParams.hauteurCloisons) params.set("hauteur_cloisons", globalParams.hauteurCloisons);
     if (globalParams.longueurCloisons) params.set("longueur_cloisons", globalParams.longueurCloisons);
+    // GET avec téléchargement → on peut pas mettre le JWT en header sur
+    // window.open. On le passe en query (?token=) ; le backend accepte
+    // header OU query pour les endpoints GET de download.
+    const token = getJwt();
+    if (token) params.set("token", token);
     window.open(`${API_URL}/budget/projets/${projetActif.id}/pdf?${params}`, "_blank");
     setShowPdfModal(false);
   }
@@ -817,7 +819,7 @@ export default function App() {
     if (!user?.email) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/budget/admin/items?email=${encodeURIComponent(user.email)}`);
+      const res = await authFetch(`${API_URL}/budget/admin/items`);
       if (res.status === 403) {
         alert("Accès admin requis. Contacte l'administrateur pour obtenir le rôle.");
         setPage("projets");
@@ -854,8 +856,8 @@ export default function App() {
     }
     if (Object.keys(payload).length === 0) return;
     try {
-      const res = await fetch(
-        `${API_URL}/budget/admin/items/${id}?email=${encodeURIComponent(user.email)}`,
+      const res = await authFetch(
+        `${API_URL}/budget/admin/items/${id}`,
         { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
       );
       if (!res.ok) throw new Error("Erreur");
@@ -870,8 +872,8 @@ export default function App() {
 
   async function adminCreateItem() {
     try {
-      const res = await fetch(
-        `${API_URL}/budget/admin/items?email=${encodeURIComponent(user.email)}`,
+      const res = await authFetch(
+        `${API_URL}/budget/admin/items`,
         {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ section: "Divers", description: "Nouvel item",
@@ -889,8 +891,8 @@ export default function App() {
   async function adminDeleteItem(id, label) {
     if (!confirm(`Supprimer l'item "${label}" de la BD maître ?\n\nCette action est irréversible et n'affecte pas les projets existants.`)) return;
     try {
-      const res = await fetch(
-        `${API_URL}/budget/admin/items/${id}?email=${encodeURIComponent(user.email)}`,
+      const res = await authFetch(
+        `${API_URL}/budget/admin/items/${id}`,
         { method: "DELETE" },
       );
       if (!res.ok) throw new Error("Erreur");
@@ -921,7 +923,7 @@ export default function App() {
 
     setSaving((prev) => new Set(prev).add(ligne.id));
     try {
-      await fetch(`${API_URL}/budget/projets/${projetActif.id}/lignes/${ligne.id}`, {
+      await authFetch(`${API_URL}/budget/projets/${projetActif.id}/lignes/${ligne.id}`, {
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           section: edit.section ?? ligne.section,
@@ -944,7 +946,7 @@ export default function App() {
 
   // Ajoute une ligne vide juste après la ligne référencée
   async function ajouterLigneApres(ligneRef) {
-    const res = await fetch(`${API_URL}/budget/projets/${projetActif.id}/lignes`, {
+    const res = await authFetch(`${API_URL}/budget/projets/${projetActif.id}/lignes`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         section: ligneRef.section,
@@ -966,7 +968,7 @@ export default function App() {
   async function supprimerLigne(id) {
     if (!confirm("Supprimer cet élément ?")) return;
     if (autosaveTimers.current[id]) clearTimeout(autosaveTimers.current[id]);
-    await fetch(`${API_URL}/budget/projets/${projetActif.id}/lignes/${id}`, { method: "DELETE" });
+    await authFetch(`${API_URL}/budget/projets/${projetActif.id}/lignes/${id}`, { method: "DELETE" });
     setLignes((prev) => prev.filter((l) => l.id !== id));
     setActiveItems((prev) => { const next = new Set(prev); next.delete(id); return next; });
   }
@@ -982,7 +984,7 @@ export default function App() {
       return next;
     });
     try {
-      const res = await fetch(
+      const res = await authFetch(
         `${API_URL}/budget/projets/${projetActif.id}/lignes/${id}`,
         {
           method: "PUT",
@@ -1134,7 +1136,7 @@ export default function App() {
         <span>Ad BUD</span>
       </div>
       <div style={styles.navUser}>
-        <span>👤 {user?.nom}</span>
+        <span>👤 {user?.nom || user?.email}</span>
         {user?.role === "admin" && page !== "admin" && (
           <button className="adision-nav-btn" style={styles.navLogout} onClick={() => setPage("admin")}>🛠️ Admin</button>
         )}
@@ -1145,24 +1147,13 @@ export default function App() {
 
   // ── Pages ─────────────────────────────────────────────────────────────────
 
-  if (page === "login") {
+  // L'auth SSO est encore en cours de bootstrap (validation /auth/me) :
+  // on évite de flasher un écran vide ou un état non authentifié.
+  if (authStatus !== "ready") {
     return (
       <div style={styles.loginPage}>
-        <div style={styles.loginCard}>
-          <div style={styles.loginLogo}>Ad BUD</div>
-          <p style={styles.loginSubtitle}>Outil de budgétisation de construction</p>
-          <label style={styles.loginLabel}>Email</label>
-          <input type="email" placeholder="ton@email.com" value={loginEmail}
-            onChange={(e) => { setLoginEmail(e.target.value); setLoginError(""); }}
-            style={styles.loginInput} onKeyDown={(e) => e.key === "Enter" && handleLogin()} />
-          <label style={styles.loginLabel}>Nom (si nouveau compte)</label>
-          <input type="text" placeholder="Ton nom" value={loginNom}
-            onChange={(e) => setLoginNom(e.target.value)}
-            style={styles.loginInput} onKeyDown={(e) => e.key === "Enter" && handleLogin()} />
-          {loginError && <p style={styles.loginError}>{loginError}</p>}
-          <button onClick={handleLogin} style={styles.loginBtn} disabled={loading}>
-            {loading ? "Connexion…" : "Se connecter"}
-          </button>
+        <div style={{ color: "#fff", fontSize: 14, opacity: 0.85 }}>
+          {authStatus === "error" ? "Connexion au serveur impossible…" : "Chargement…"}
         </div>
       </div>
     );
@@ -1182,7 +1173,7 @@ export default function App() {
                   onClick={async (e) => {
                     e.stopPropagation();
                     try {
-                      const res = await fetch(`${API_URL}/budget/projets/${p.id}/duplicate`, { method: "POST" });
+                      const res = await authFetch(`${API_URL}/budget/projets/${p.id}/duplicate`, { method: "POST" });
                       if (!res.ok) throw new Error("Erreur");
                       await loadProjets(user.id);
                     } catch (err) {
@@ -1204,7 +1195,7 @@ export default function App() {
                     e.stopPropagation();
                     if (!confirm(`Supprimer le projet "${p.nom}" ?\n\nCette action est irréversible.`)) return;
                     try {
-                      const res = await fetch(`${API_URL}/budget/projets/${p.id}`, { method: "DELETE" });
+                      const res = await authFetch(`${API_URL}/budget/projets/${p.id}`, { method: "DELETE" });
                       if (!res.ok) throw new Error("Erreur");
                       setProjets(projets.filter(x => x.id !== p.id));
                     } catch (err) {
@@ -1416,7 +1407,11 @@ export default function App() {
               </button>
               <button
                 className="ad-btn-secondary"
-                onClick={() => window.open(`${API_URL}/budget/projets/${projetActif.id}/export`, "_blank")}
+                onClick={() => {
+                  const t = getJwt();
+                  const qs = t ? `?token=${encodeURIComponent(t)}` : "";
+                  window.open(`${API_URL}/budget/projets/${projetActif.id}/export${qs}`, "_blank");
+                }}
                 style={styles.btnSecondary}
                 title="Télécharger le budget en Excel"
               >
