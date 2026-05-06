@@ -414,7 +414,7 @@ export default function App() {
   });
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [pdfFilters, setPdfFilters] = useState({
-    inactifs: false, avecPrix: true, avecParametres: true,
+    inactifs: false, avecPrix: true,
     sections: new Set(), colonnes: new Set(),
     sousTotaux: new Set(), adminProfits: new Set(),
     avecSousTotalAvantTaxes: true, avecTps: true, avecTvq: true,
@@ -724,7 +724,6 @@ export default function App() {
     setPdfFilters({
       inactifs: false,
       avecPrix: true,
-      avecParametres: true,
       sections: new Set(uniqueSections),
       colonnes: new Set(PDF_COLUMNS.map((c) => c.key)),
       sousTotaux: sousTotauxInit,
@@ -783,7 +782,6 @@ export default function App() {
     const params = new URLSearchParams();
     params.set("actifs_seulement", String(!pdfFilters.inactifs));
     params.set("avec_prix", String(pdfFilters.avecPrix));
-    params.set("avec_parametres", String(pdfFilters.avecParametres));
     params.set("avec_sous_total_avant_taxes", String(pdfFilters.avecSousTotalAvantTaxes));
     params.set("avec_tps", String(pdfFilters.avecTps));
     params.set("avec_tvq", String(pdfFilters.avecTvq));
@@ -1887,12 +1885,6 @@ export default function App() {
                 <input type="checkbox" checked={pdfFilters.avecPrix}
                   onChange={(e) => setPdfFilters((p) => ({ ...p, avecPrix: e.target.checked }))} />
                 Inclure les prix (sinon mode sous-traitant : sans prix ni notes)
-              </label>
-              <label style={{ display: "flex", alignItems: "center", gap: 8,
-                              marginBottom: 10, fontSize: 13, cursor: "pointer" }}>
-                <input type="checkbox" checked={pdfFilters.avecParametres}
-                  onChange={(e) => setPdfFilters((p) => ({ ...p, avecParametres: e.target.checked }))} />
-                Inclure les paramètres du projet
               </label>
               <label style={{ display: "flex", alignItems: "center", gap: 8,
                               marginBottom: 10, fontSize: 13, cursor: "pointer" }}>
