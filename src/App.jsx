@@ -212,8 +212,9 @@ const styles = {
     width: "100%", boxSizing: "border-box", background: "#f1f5f9", color: "#94a3b8",
   },
   select: {
-    padding: "6px 10px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 13,
-    width: "100%", color: "#0f172a", background: "#ffffff", outline: "none",
+    padding: "4px 8px", border: "1px solid #e2e8f0", borderRadius: 4, fontSize: 13,
+    minWidth: 80, width: "100%", color: "#0f172a", background: "#ffffff",
+    outline: "none", boxSizing: "border-box",
   },
   totalRow: {
     textAlign: "right", padding: "18px 24px", fontSize: 18, fontWeight: 700,
@@ -1040,11 +1041,12 @@ export default function App() {
   const Nav = () => (
     <nav style={styles.nav}>
       <div style={styles.navLogo}>
-        <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <rect x="0" y="0" width="9" height="9" fill="#ffffff" />
-          <rect x="11" y="0" width="9" height="9" fill="#93c5fd" />
-          <rect x="0" y="11" width="9" height="9" fill="#ef4444" />
-          <rect x="11" y="11" width="9" height="9" fill="#10b981" />
+        <svg width="22" height="22" viewBox="0 0 70 70" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect x="0" y="0" width="70" height="70" rx="8" fill="#ffffff" />
+          <rect x="32" y="5"  width="6"  height="27" fill="#1e3a8a" />
+          <rect x="38" y="32" width="27" height="6"  fill="#1e3a8a" />
+          <rect x="32" y="38" width="6"  height="27" fill="#ef4444" />
+          <rect x="5"  y="32" width="27" height="6"  fill="#10b981" />
         </svg>
         <span>Ad BUD</span>
       </div>
@@ -1456,7 +1458,7 @@ export default function App() {
                                         style={row.isAutoQte ? styles.inputDisabled : styles.input} />
                                     </td>
                                     {/* Unité */}
-                                    <td style={{ ...styles.td, width: 90 }}>
+                                    <td style={{ ...styles.td, width: 100 }}>
                                       <select value={edit.unite ?? ligne.unite ?? "global"}
                                         onChange={(e) => updateEdit(ligne.id, "unite", e.target.value)}
                                         style={styles.select}>
@@ -1931,7 +1933,7 @@ export default function App() {
                               onChange={(e) => adminUpdateEdit(item.id, "description", e.target.value)}
                               style={styles.input} />
                           </td>
-                          <td style={{ ...styles.td, width: 90 }}>
+                          <td style={{ ...styles.td, width: 100 }}>
                             <select value={adminVal(item, "unite", "global")}
                               onChange={(e) => adminUpdateEdit(item.id, "unite", e.target.value)}
                               style={styles.select}>
