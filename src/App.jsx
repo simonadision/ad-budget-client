@@ -295,6 +295,28 @@ export default function App() {
   const notesTimer = useRef(null);
   const [pctEdits, setPctEdits] = useState({});
   const pctTimers = useRef({});
+  const [totalsVisibility, setTotalsVisibility] = useState(() => {
+    const defaults = Object.fromEntries(
+      BUDGET_GROUPS.map((g) => [g.key, { sousTotal: true, adminProfit: true }])
+    );
+    try {
+      const stored = localStorage.getItem("ad_bud_totaux_visibles");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const merged = { ...defaults };
+        for (const g of BUDGET_GROUPS) {
+          if (parsed[g.key]) merged[g.key] = { ...defaults[g.key], ...parsed[g.key] };
+        }
+        return merged;
+      }
+    } catch {}
+    return defaults;
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("ad_bud_totaux_visibles", JSON.stringify(totalsVisibility));
+    } catch {}
+  }, [totalsVisibility]);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [infoEdits, setInfoEdits] = useState({});
   const [infoSaving, setInfoSaving] = useState(false);
@@ -540,6 +562,24 @@ export default function App() {
     } catch {
       setAutosaveStatus("erreur ✗");
     }
+  }
+
+  function toggleTotalSousTotal(key) {
+    setTotalsVisibility((prev) => {
+      const cur = prev[key] || { sousTotal: true, adminProfit: true };
+      if (cur.sousTotal) {
+        return { ...prev, [key]: { sousTotal: false, adminProfit: false } };
+      }
+      return { ...prev, [key]: { ...cur, sousTotal: true } };
+    });
+  }
+
+  function toggleTotalAdminProfit(key) {
+    setTotalsVisibility((prev) => {
+      const cur = prev[key] || { sousTotal: true, adminProfit: true };
+      if (!cur.sousTotal) return prev;
+      return { ...prev, [key]: { ...cur, adminProfit: !cur.adminProfit } };
+    });
   }
 
   const INFO_FIELDS = [
@@ -1390,20 +1430,38 @@ export default function App() {
                       const pctStr = pctVal(g.pctField);
                       const pct = normalizeNumber(pctStr) || 0;
                       const adminProfit = g.subtotal * pct / 100;
+                      const vis = totalsVisibility[g.key] || { sousTotal: true, adminProfit: true };
+                      const showAdmin = vis.sousTotal && vis.adminProfit;
                       return (
                         <div key={g.key} style={{ borderBottom: "1px dashed #e2e8f0",
                                                   paddingBottom: 8, marginBottom: 8 }}>
                           <div style={{ display: "flex", justifyContent: "space-between",
                                         padding: "4px 0", fontSize: 13 }}>
-                            <span style={{ fontWeight: 600 }}>Sous-total {g.label}</span>
+                            <span style={{ display: "flex", alignItems: "center", gap: 8,
+                                           fontWeight: 600 }}>
+                              <input type="checkbox" checked={vis.sousTotal}
+                                onChange={() => toggleTotalSousTotal(g.key)}
+                                style={{ accentColor: "#16a34a", cursor: "pointer" }}
+                                title="Afficher / masquer ce sous-total et son admin & profit" />
+                              Sous-total {g.label}
+                            </span>
                             <span style={{ fontWeight: 600, color: "#1e3a8a" }}>
-                              {g.subtotal.toFixed(2)} $
+                              {vis.sousTotal ? `${g.subtotal.toFixed(2)} $` : "—"}
                             </span>
                           </div>
                           <div style={{ display: "flex", justifyContent: "space-between",
-                                        alignItems: "center", padding: "4px 0 4px 16px",
-                                        fontSize: 13 }}>
+                                        alignItems: "center", padding: "4px 0 4px 28px",
+                                        fontSize: 13,
+                                        opacity: vis.sousTotal ? 1 : 0.5 }}>
                             <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <input type="checkbox"
+                                checked={vis.sousTotal && vis.adminProfit}
+                                disabled={!vis.sousTotal}
+                                onChange={() => toggleTotalAdminProfit(g.key)}
+                                style={{ accentColor: "#16a34a",
+                                         cursor: vis.sousTotal ? "pointer" : "not-allowed" }}
+                                title={vis.sousTotal ? "Afficher / masquer cet admin & profit"
+                                                     : "Cocher d'abord le sous-total"} />
                               Administration et profit
                               <input type="text" inputMode="decimal" value={pctStr}
                                 onChange={(e) => updatePctField(g.pctField, e.target.value)}
@@ -1412,7 +1470,9 @@ export default function App() {
                                          fontSize: 13, textAlign: "right" }} />
                               %
                             </span>
-                            <span style={{ color: "#475569" }}>{adminProfit.toFixed(2)} $</span>
+                            <span style={{ color: "#475569" }}>
+                              {showAdmin ? `${adminProfit.toFixed(2)} $` : "—"}
+                            </span>
                           </div>
                         </div>
                       );
