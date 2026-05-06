@@ -6,6 +6,18 @@ const allowedUnites = [
   "pi²", "m²", "pi", "plin", "mlin", "unité", "global", "sem", "/1000$", "m³",
 ];
 
+const PDF_COLUMNS = [
+  { key: "section", label: "Section" },
+  { key: "description", label: "Description" },
+  { key: "qte", label: "Qté" },
+  { key: "unite", label: "Unité" },
+  { key: "prix_unitaire", label: "Prix unitaire" },
+  { key: "sous_total", label: "Sous-total" },
+  { key: "ajustement_pct", label: "Ajust. %" },
+  { key: "total", label: "Total" },
+  { key: "note", label: "Note" },
+];
+
 const SURFACE_PLANCHER_TERMS = ["nettoyage", "revêtement de sol", "revetement de sol"];
 const SURFACE_MUR_TERMS = ["cloisons système intérieur", "cloisons systeme interieur"];
 const SURFACE_GYPSE_TERMS = ["plâtrage", "platrage", "peinture", "papier peint"];
@@ -243,7 +255,7 @@ export default function App() {
   });
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [pdfFilters, setPdfFilters] = useState({
-    inactifs: false, avecPrix: true, sections: new Set(),
+    inactifs: false, avecPrix: true, sections: new Set(), colonnes: new Set(),
   });
   const [adminItems, setAdminItems] = useState([]);
   const [adminEdits, setAdminEdits] = useState({});
@@ -438,6 +450,7 @@ export default function App() {
       inactifs: false,
       avecPrix: true,
       sections: new Set(uniqueSections),
+      colonnes: new Set(PDF_COLUMNS.map((c) => c.key)),
     });
     setShowPdfModal(true);
   }
@@ -451,14 +464,28 @@ export default function App() {
     });
   }
 
+  function togglePdfColumn(col) {
+    setPdfFilters((prev) => {
+      const next = new Set(prev.colonnes);
+      if (next.has(col)) next.delete(col);
+      else next.add(col);
+      return { ...prev, colonnes: next };
+    });
+  }
+
   function generatePdf() {
     if (!projetActif) return;
     const params = new URLSearchParams();
     params.set("actifs_seulement", String(!pdfFilters.inactifs));
     params.set("avec_prix", String(pdfFilters.avecPrix));
-    const allSelected = pdfFilters.sections.size === uniqueSections.length;
-    if (!allSelected && pdfFilters.sections.size > 0) {
+    const allSectionsSelected = pdfFilters.sections.size === uniqueSections.length;
+    if (!allSectionsSelected && pdfFilters.sections.size > 0) {
       params.set("sections", [...pdfFilters.sections].join(","));
+    }
+    const allColsSelected = pdfFilters.colonnes.size === PDF_COLUMNS.length;
+    if (!allColsSelected && pdfFilters.colonnes.size > 0) {
+      const ordered = PDF_COLUMNS.filter((c) => pdfFilters.colonnes.has(c.key)).map((c) => c.key);
+      params.set("colonnes", ordered.join(","));
     }
     if (globalParams.mobilisation) params.set("mobilisation", globalParams.mobilisation);
     if (globalParams.surfacePlancher) params.set("surface_plancher", globalParams.surfacePlancher);
@@ -1062,6 +1089,33 @@ export default function App() {
               </label>
               <div style={{ fontSize: 13, fontWeight: 600, color: "#1e3a8a",
                             marginBottom: 6, marginTop: 4 }}>
+                Colonnes ({pdfFilters.colonnes.size} / {PDF_COLUMNS.length})
+              </div>
+              <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                <button onClick={() => setPdfFilters((p) => ({ ...p, colonnes: new Set(PDF_COLUMNS.map((c) => c.key)) }))}
+                  style={{ ...styles.btnSecondary, padding: "4px 10px", fontSize: 12 }}>
+                  Tout cocher
+                </button>
+                <button onClick={() => setPdfFilters((p) => ({ ...p, colonnes: new Set() }))}
+                  style={{ ...styles.btnSecondary, padding: "4px 10px", fontSize: 12 }}>
+                  Tout décocher
+                </button>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)",
+                            gap: "4px 12px", border: "1px solid #e2e8f0",
+                            borderRadius: 6, padding: 8, marginBottom: 16 }}>
+                {PDF_COLUMNS.map((c) => (
+                  <label key={c.key} style={{ display: "flex", alignItems: "center",
+                                              gap: 8, fontSize: 12, padding: "3px 0",
+                                              cursor: "pointer" }}>
+                    <input type="checkbox" checked={pdfFilters.colonnes.has(c.key)}
+                      onChange={() => togglePdfColumn(c.key)} />
+                    {c.label}
+                  </label>
+                ))}
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#1e3a8a",
+                            marginBottom: 6, marginTop: 4 }}>
                 Sections à inclure ({pdfFilters.sections.size} / {uniqueSections.length})
               </div>
               <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
@@ -1094,11 +1148,11 @@ export default function App() {
                   Annuler
                 </button>
                 <button onClick={generatePdf}
-                  disabled={pdfFilters.sections.size === 0}
+                  disabled={pdfFilters.sections.size === 0 || pdfFilters.colonnes.size === 0}
                   style={{
                     ...styles.btnPrimary,
-                    opacity: pdfFilters.sections.size === 0 ? 0.5 : 1,
-                    cursor: pdfFilters.sections.size === 0 ? "not-allowed" : "pointer",
+                    opacity: (pdfFilters.sections.size === 0 || pdfFilters.colonnes.size === 0) ? 0.5 : 1,
+                    cursor: (pdfFilters.sections.size === 0 || pdfFilters.colonnes.size === 0) ? "not-allowed" : "pointer",
                   }}>
                   Générer le PDF
                 </button>
