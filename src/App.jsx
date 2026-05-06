@@ -6,6 +6,45 @@ const allowedUnites = [
   "pi²", "m²", "pi", "plin", "mlin", "unité", "global", "sem", "/1000$", "m³",
 ];
 
+const DEFAULT_LOGO_URL = "/adision_logo.png";
+
+async function processLogoFile(file) {
+  if (!file.type.match(/^image\/(png|jpe?g)$/)) {
+    alert("Format invalide : PNG ou JPEG seulement.");
+    return null;
+  }
+  const dataUrl = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+  const img = await new Promise((resolve, reject) => {
+    const i = new Image();
+    i.onload = () => resolve(i);
+    i.onerror = reject;
+    i.src = dataUrl;
+  });
+  const MAX_W = 800;
+  const scale = img.width > MAX_W ? MAX_W / img.width : 1;
+  const w = Math.max(1, Math.round(img.width * scale));
+  const h = Math.max(1, Math.round(img.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(img, 0, 0, w, h);
+  const out = canvas.toDataURL("image/jpeg", 0.85);
+  const sizeKB = Math.round((out.length * 3 / 4) / 1024);
+  if (sizeKB > 500) {
+    alert(`Image trop grande après redimensionnement (${sizeKB} KB). Choisis une image plus petite.`);
+    return null;
+  }
+  return out;
+}
+
 const PDF_COLUMNS = [
   { key: "section", label: "Section" },
   { key: "description", label: "Description" },
@@ -255,6 +294,7 @@ export default function App() {
     nom_client: "", contact_client: "", email_client: "", telephone_client: "",
     numero_projet: "", date_debut: "", date_fin: "",
     contact_entrepreneur: "", email_entrepreneur: "", telephone_entrepreneur: "",
+    logo_base64: "",
   });
   const [globalParams, setGlobalParams] = useState({
     mobilisation: "", surfacePlancher: "", hauteurCloisons: "", longueurCloisons: "",
@@ -457,6 +497,7 @@ export default function App() {
     "nom_client", "contact_client", "email_client", "telephone_client",
     "numero_projet", "date_debut", "date_fin",
     "contact_entrepreneur", "email_entrepreneur", "telephone_entrepreneur",
+    "logo_base64",
   ];
 
   function openInfoModal() {
@@ -734,6 +775,48 @@ export default function App() {
 
   // ── Nav ──────────────────────────────────────────────────────────────────
 
+  const LogoUpload = ({ value, setter }) => {
+    const hasCustom = !!value;
+    return (
+      <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: 12,
+                    background: "#fff", textAlign: "center", width: 200 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#475569",
+                      marginBottom: 8, textTransform: "uppercase",
+                      letterSpacing: 0.5 }}>Logo du projet</div>
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center",
+                      height: 80, marginBottom: 8 }}>
+          <img src={hasCustom ? value : DEFAULT_LOGO_URL} alt="Logo"
+            style={{ maxWidth: "100%", maxHeight: 80, objectFit: "contain" }} />
+        </div>
+        {!hasCustom && (
+          <div style={{ fontSize: 11, color: "#64748b", marginBottom: 8, fontStyle: "italic" }}>
+            Logo par défaut Adision
+          </div>
+        )}
+        <div style={{ display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
+          <label style={{ ...styles.btnSecondary, padding: "5px 10px", fontSize: 12, cursor: "pointer" }}>
+            Téléverser
+            <input type="file" accept="image/png,image/jpeg"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const result = await processLogoFile(file);
+                if (result) setter(result);
+                e.target.value = "";
+              }}
+              style={{ display: "none" }} />
+          </label>
+          {hasCustom && (
+            <button onClick={() => setter("")}
+              style={{ ...styles.btnSecondary, padding: "5px 10px", fontSize: 12, color: "#ef4444" }}>
+              Retirer
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const Nav = () => (
     <nav style={styles.nav}>
       <div style={styles.navLogo}>Ad BUD</div>
@@ -851,6 +934,10 @@ export default function App() {
           <h1 style={styles.pageTitle}>Nouveau projet</h1>
           <div style={styles.card}>
             <div style={styles.cardBody}>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+                <LogoUpload value={nouveauProjet.logo_base64}
+                  setter={(v) => setNouveauProjet((p) => ({ ...p, logo_base64: v }))} />
+              </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 16 }}>
                 <div>
                   <div style={{ fontSize: 11, fontWeight: 700, color: "#475569",
@@ -1211,6 +1298,10 @@ export default function App() {
               <h2 style={{ margin: "0 0 16px", color: "#1e3a8a", fontSize: 18 }}>
                 ✏️ Modifier les informations du projet
               </h2>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+                <LogoUpload value={infoEdits.logo_base64 ?? ""}
+                  setter={(v) => setInfoField("logo_base64", v)} />
+              </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 16 }}>
                 <div>
                   <div style={{ fontSize: 11, fontWeight: 700, color: "#475569",
