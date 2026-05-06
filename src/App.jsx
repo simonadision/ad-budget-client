@@ -45,6 +45,17 @@ async function processLogoFile(file) {
   return out;
 }
 
+const BUDGET_GROUPS = [
+  { key: "conditions", label: "Conditions générales", pctField: "pct_admin_conditions",
+    matches: (n) => n === 1 },
+  { key: "architecture", label: "Architecture", pctField: "pct_admin_architecture",
+    matches: (n) => n >= 2 && n <= 14 },
+  { key: "mecanique", label: "Mécanique", pctField: "pct_admin_mecanique",
+    matches: (n) => n >= 20 && n <= 28 },
+  { key: "excavation", label: "Excavation", pctField: "pct_admin_excavation",
+    matches: (n) => n === 31 },
+];
+
 const PDF_COLUMNS = [
   { key: "section", label: "Section" },
   { key: "description", label: "Description" },
@@ -282,6 +293,8 @@ export default function App() {
   const autosaveTimers = useRef({});
   const [notes, setNotes] = useState("");
   const notesTimer = useRef(null);
+  const [pctEdits, setPctEdits] = useState({});
+  const pctTimers = useRef({});
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [infoEdits, setInfoEdits] = useState({});
   const [infoSaving, setInfoSaving] = useState(false);
@@ -406,6 +419,9 @@ export default function App() {
   async function ouvrirProjet(projet) {
     setProjetActif(projet);
     setNotes(projet.notes ?? "");
+    setPctEdits({});
+    Object.values(pctTimers.current).forEach((t) => clearTimeout(t));
+    pctTimers.current = {};
     setLoading(true);
     setEdits({});
     setActiveItems(new Set());
@@ -485,6 +501,39 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notes: value }),
       });
+      setAutosaveStatus("sauvegardé ✓");
+      setTimeout(() => setAutosaveStatus(""), 2000);
+    } catch {
+      setAutosaveStatus("erreur ✗");
+    }
+  }
+
+  function pctVal(field) {
+    if (field in pctEdits) return pctEdits[field];
+    const v = projetActif?.[field];
+    if (v == null) return "0";
+    return String(parseFloat(v));
+  }
+
+  function updatePctField(field, value) {
+    setPctEdits((prev) => ({ ...prev, [field]: value }));
+    if (pctTimers.current[field]) clearTimeout(pctTimers.current[field]);
+    setAutosaveStatus("en attente de sauvegarde…");
+    pctTimers.current[field] = setTimeout(() => savePctField(field, value), AUTOSAVE_DELAY);
+  }
+
+  async function savePctField(field, rawValue) {
+    if (!projetActif) return;
+    const num = normalizeNumber(rawValue);
+    try {
+      const res = await fetch(`${API_URL}/budget/projets/${projetActif.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: num }),
+      });
+      if (!res.ok) throw new Error();
+      setProjetActif((prev) => (prev ? { ...prev, [field]: num } : prev));
+      setPctEdits((prev) => { const next = { ...prev }; delete next[field]; return next; });
       setAutosaveStatus("sauvegardé ✓");
       setTimeout(() => setAutosaveStatus(""), 2000);
     } catch {
@@ -764,6 +813,29 @@ export default function App() {
 
   const grandTotal = budgetLignes.reduce((sum, l) => sum + l.total, 0);
   const lignesByPrefix = useMemo(() => groupByPrefix(lignes), [lignes]);
+
+  const groupTotals = useMemo(() => {
+    const result = BUDGET_GROUPS.map((g) => ({ ...g, subtotal: 0 }));
+    for (const l of budgetLignes) {
+      const prefix = getPrefix(l.section);
+      const n = parseInt(prefix, 10);
+      if (isNaN(n)) continue;
+      for (const g of result) {
+        if (g.matches(n)) { g.subtotal += l.total; break; }
+      }
+    }
+    return result;
+  }, [budgetLignes]);
+
+  const totalGeneral = useMemo(() => {
+    let t = grandTotal;
+    for (const g of groupTotals) {
+      const raw = (g.pctField in pctEdits) ? pctEdits[g.pctField] : (projetActif?.[g.pctField] ?? 0);
+      const pct = normalizeNumber(raw) || 0;
+      t += g.subtotal * pct / 100;
+    }
+    return t;
+  }, [grandTotal, groupTotals, pctEdits, projetActif]);
 
   function toggleCollapsedBudget(prefix) {
     setCollapsedBudget((prev) => {
@@ -1275,8 +1347,46 @@ export default function App() {
                       </tbody>
                     </table>
                   </div>
-                  <div style={styles.totalRow}>
-                    Total budget : {grandTotal.toFixed(2)} $
+                  <div style={{ background: "#fff", borderTop: "2px solid #2563eb",
+                                padding: "12px 20px" }}>
+                    {groupTotals.map((g) => {
+                      if (g.subtotal <= 0) return null;
+                      const pctStr = pctVal(g.pctField);
+                      const pct = normalizeNumber(pctStr) || 0;
+                      const adminProfit = g.subtotal * pct / 100;
+                      return (
+                        <div key={g.key} style={{ borderBottom: "1px dashed #e2e8f0",
+                                                  paddingBottom: 8, marginBottom: 8 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between",
+                                        padding: "4px 0", fontSize: 13 }}>
+                            <span style={{ fontWeight: 600 }}>Sous-total {g.label}</span>
+                            <span style={{ fontWeight: 600, color: "#1e3a8a" }}>
+                              {g.subtotal.toFixed(2)} $
+                            </span>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between",
+                                        alignItems: "center", padding: "4px 0 4px 16px",
+                                        fontSize: 13 }}>
+                            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              Administration et profit
+                              <input type="text" inputMode="decimal" value={pctStr}
+                                onChange={(e) => updatePctField(g.pctField, e.target.value)}
+                                style={{ width: 60, padding: "2px 6px",
+                                         border: "1px solid #cbd5e1", borderRadius: 4,
+                                         fontSize: 13, textAlign: "right" }} />
+                              %
+                            </span>
+                            <span style={{ color: "#475569" }}>{adminProfit.toFixed(2)} $</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div style={{ borderTop: "2px solid #1e3a8a", marginTop: 4, paddingTop: 12,
+                                  display: "flex", justifyContent: "space-between",
+                                  fontSize: 16, fontWeight: 800, color: "#1e3a8a" }}>
+                      <span>TOTAL GÉNÉRAL</span>
+                      <span>{totalGeneral.toFixed(2)} $</span>
+                    </div>
                   </div>
                 </>
               )}
