@@ -36,6 +36,38 @@
   /* Accents secondaires */
   --ad-warning-bg: #fef3c7;     /* ambre — Total gonflé pro rata */
 
+  /* Polish UI — inputs et boutons secondaires */
+  --ad-blue: #24438f;             /* bleu marque pour texte boutons secondaires */
+  --ad-blue-soft: #eef4ff;        /* bleu très pâle — hover des boutons secondaires */
+  --ad-input-border: #dbe3f0;     /* bordure douce bleutée — inputs */
+  --ad-border-blue: #c7d7f5;      /* bordure bleue très légère — boutons secondaires */
+  --ad-border-blue-hover: #9bb8ee;/* bordure bleue au hover */
+  --ad-focus: rgba(37, 99, 235, 0.10);
+
   /* Typographie */
   --ad-font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+/* ─── Inputs / textarea / select ──────────────────────────────────────── */
+input, textarea, select {
+  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: var(--ad-primary) !important;
+  box-shadow: 0 0 0 3px var(--ad-focus) !important;
+  outline: none !important;
+}
+
+::placeholder { color: var(--ad-text-faint); opacity: 1; }
+
+/* ─── Boutons secondaires (Modifier, PDF, Excel, Annuler, …) ─────────── */
+.ad-btn-secondary {
+  transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.ad-btn-secondary:hover:not(:disabled) {
+  background: var(--ad-blue-soft) !important;
+  border-color: var(--ad-border-blue-hover) !important;
+  box-shadow: 0 1px 2px rgba(30, 58, 138, 0.06);
 }

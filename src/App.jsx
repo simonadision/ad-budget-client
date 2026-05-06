@@ -98,8 +98,9 @@ const styles = {
     color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6,
   },
   loginInput: {
-    width: "100%", padding: "10px 14px", border: "1px solid #cbd5e1",
-    borderRadius: 8, fontSize: 14, marginBottom: 16, boxSizing: "border-box", outline: "none",
+    width: "100%", padding: "10px 14px", border: "1px solid #dbe3f0",
+    borderRadius: 8, fontSize: 14, marginBottom: 16, boxSizing: "border-box",
+    background: "#ffffff", outline: "none",
   },
   loginBtn: {
     width: "100%", padding: "12px", background: "#2563eb", color: "#fff",
@@ -153,14 +154,14 @@ const styles = {
     fontSize: 12, fontWeight: 600, color: "#475569", textTransform: "uppercase",
     letterSpacing: "0.05em", marginBottom: 6,
   },
-  formInput: { padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 14, outline: "none" },
-  formSelect: { padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 14, background: "#fff", outline: "none" },
+  formInput: { padding: "8px 12px", border: "1px solid #dbe3f0", borderRadius: 6, fontSize: 14, background: "#ffffff", outline: "none" },
+  formSelect: { padding: "8px 12px", border: "1px solid #dbe3f0", borderRadius: 6, fontSize: 14, background: "#ffffff", outline: "none" },
   btnPrimary: {
     padding: "7px 18px", background: "#2563eb", color: "#fff", border: "none",
     borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer",
   },
   btnSecondary: {
-    padding: "7px 18px", background: "#f1f5f9", color: "#475569", border: "1px solid #cbd5e1",
+    padding: "7px 18px", background: "#ffffff", color: "#1e3a8a", border: "1px solid #c7d7f5",
     borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer",
   },
   btnBack: {
@@ -197,16 +198,16 @@ const styles = {
   tdGroup: { padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#fff" },
   tdGroupTotal: { padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#fff", textAlign: "right", whiteSpace: "nowrap" },
   input: {
-    padding: "4px 7px", border: "1px solid #cbd5e1", borderRadius: 5, fontSize: 12,
-    width: "100%", boxSizing: "border-box", outline: "none",
+    padding: "4px 7px", border: "1px solid #dbe3f0", borderRadius: 6, fontSize: 12,
+    width: "100%", boxSizing: "border-box", background: "#ffffff", outline: "none",
   },
   inputDisabled: {
     padding: "4px 7px", border: "1px solid #e2e8f0", borderRadius: 5, fontSize: 12,
     width: "100%", boxSizing: "border-box", background: "#f1f5f9", color: "#94a3b8",
   },
   select: {
-    padding: "4px 7px", border: "1px solid #cbd5e1", borderRadius: 5, fontSize: 12,
-    width: "100%", background: "#fff", outline: "none",
+    padding: "4px 7px", border: "1px solid #dbe3f0", borderRadius: 6, fontSize: 12,
+    width: "100%", background: "#ffffff", outline: "none",
   },
   totalRow: {
     textAlign: "right", padding: "14px 20px", fontSize: 15, fontWeight: 700,
@@ -224,7 +225,7 @@ const styles = {
     display: "flex", flexDirection: "column", gap: 4, fontSize: 11, fontWeight: 600,
     color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em",
   },
-  paramInput: { padding: "5px 8px", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: 13, width: 90, outline: "none" },
+  paramInput: { padding: "5px 8px", border: "1px solid #dbe3f0", borderRadius: 6, fontSize: 13, width: 90, background: "#ffffff", outline: "none" },
   statBadge: {
     background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 8,
     padding: "6px 12px", fontSize: 12, fontWeight: 600, color: "#1d4ed8",
@@ -1006,7 +1007,7 @@ export default function App() {
           </div>
         )}
         <div style={{ display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
-          <label style={{ ...styles.btnSecondary, padding: "5px 10px", fontSize: 12, cursor: "pointer" }}>
+          <label className="ad-btn-secondary" style={{ ...styles.btnSecondary, padding: "5px 10px", fontSize: 12, cursor: "pointer" }}>
             Téléverser
             <input type="file" accept="image/png,image/jpeg"
               onChange={async (e) => {
@@ -1019,7 +1020,7 @@ export default function App() {
               style={{ display: "none" }} />
           </label>
           {hasCustom && (
-            <button onClick={() => setter("")}
+            <button className="ad-btn-secondary" onClick={() => setter("")}
               style={{ ...styles.btnSecondary, padding: "5px 10px", fontSize: 12, color: "#ef4444" }}>
               Retirer
             </button>
@@ -1263,7 +1264,7 @@ export default function App() {
               </div>
               <div style={{ display: "flex", gap: 10 }}>
                 <button style={styles.btnPrimary} onClick={creerProjet}>Créer le projet</button>
-                <button style={styles.btnSecondary} onClick={() => setPage("projets")}>Annuler</button>
+                <button className="ad-btn-secondary" style={styles.btnSecondary} onClick={() => setPage("projets")}>Annuler</button>
               </div>
             </div>
           </div>
@@ -1298,6 +1299,7 @@ export default function App() {
                 </span>
               )}
               <button
+                className="ad-btn-secondary"
                 onClick={openInfoModal}
                 style={styles.btnSecondary}
                 title="Modifier les informations du projet"
@@ -1305,6 +1307,7 @@ export default function App() {
                 ✏️ Modifier les informations
               </button>
               <button
+                className="ad-btn-secondary"
                 onClick={openPdfModal}
                 style={styles.btnSecondary}
                 title="Générer un rapport PDF"
@@ -1312,6 +1315,7 @@ export default function App() {
                 📄 Rapport PDF
               </button>
               <button
+                className="ad-btn-secondary"
                 onClick={() => window.open(`${API_URL}/budget/projets/${projetActif.id}/export`, "_blank")}
                 style={styles.btnSecondary}
                 title="Télécharger le budget en Excel"
@@ -1349,8 +1353,8 @@ export default function App() {
               placeholder="Notes, contexte, rappels pour ce projet…"
               style={{ width: "100%", minHeight: 80, padding: 10, fontSize: 13,
                        fontFamily: "inherit", borderRadius: 8,
-                       border: "1px solid #cbd5e1", resize: "vertical",
-                       boxSizing: "border-box" }} />
+                       border: "1px solid #dbe3f0", background: "#ffffff",
+                       resize: "vertical", boxSizing: "border-box" }} />
           </div>
 
           {loading ? <p style={styles.loading}>Chargement…</p> : (
@@ -1677,7 +1681,7 @@ export default function App() {
                     Sauvegarde…
                   </span>
                 )}
-                <button onClick={() => setShowInfoModal(false)} disabled={infoSaving}
+                <button className="ad-btn-secondary" onClick={() => setShowInfoModal(false)} disabled={infoSaving}
                   style={{ ...styles.btnSecondary, opacity: infoSaving ? 0.5 : 1 }}>
                   Annuler
                 </button>
@@ -1727,11 +1731,11 @@ export default function App() {
                 Colonnes ({pdfFilters.colonnes.size} / {PDF_COLUMNS.length})
               </div>
               <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-                <button onClick={() => setPdfFilters((p) => ({ ...p, colonnes: new Set(PDF_COLUMNS.map((c) => c.key)) }))}
+                <button className="ad-btn-secondary" onClick={() => setPdfFilters((p) => ({ ...p, colonnes: new Set(PDF_COLUMNS.map((c) => c.key)) }))}
                   style={{ ...styles.btnSecondary, padding: "4px 10px", fontSize: 12 }}>
                   Tout cocher
                 </button>
-                <button onClick={() => setPdfFilters((p) => ({ ...p, colonnes: new Set() }))}
+                <button className="ad-btn-secondary" onClick={() => setPdfFilters((p) => ({ ...p, colonnes: new Set() }))}
                   style={{ ...styles.btnSecondary, padding: "4px 10px", fontSize: 12 }}>
                   Tout décocher
                 </button>
@@ -1795,11 +1799,11 @@ export default function App() {
                 Sections à inclure ({pdfFilters.sections.size} / {uniqueSections.length})
               </div>
               <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-                <button onClick={() => setPdfFilters((p) => ({ ...p, sections: new Set(uniqueSections) }))}
+                <button className="ad-btn-secondary" onClick={() => setPdfFilters((p) => ({ ...p, sections: new Set(uniqueSections) }))}
                   style={{ ...styles.btnSecondary, padding: "4px 10px", fontSize: 12 }}>
                   Tout cocher
                 </button>
-                <button onClick={() => setPdfFilters((p) => ({ ...p, sections: new Set() }))}
+                <button className="ad-btn-secondary" onClick={() => setPdfFilters((p) => ({ ...p, sections: new Set() }))}
                   style={{ ...styles.btnSecondary, padding: "4px 10px", fontSize: 12 }}>
                   Tout décocher
                 </button>
@@ -1820,7 +1824,7 @@ export default function App() {
                 ))}
               </div>
               <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                <button onClick={() => setShowPdfModal(false)} style={styles.btnSecondary}>
+                <button className="ad-btn-secondary" onClick={() => setShowPdfModal(false)} style={styles.btnSecondary}>
                   Annuler
                 </button>
                 <button onClick={generatePdf}
