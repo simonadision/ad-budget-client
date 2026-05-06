@@ -315,6 +315,16 @@ export default function App() {
   const [projets, setProjets] = useState([]);
   const [projetActif, setProjetActif] = useState(null);
   const [lignes, setLignes] = useState([]);
+  // Toast minimaliste (top-right, auto-dismiss 4s) — utilisé pour le retour
+  // de l'auto-open du deep-link ?projet= et autres feedbacks ponctuels.
+  const [toast, setToast] = useState(null);
+  function showToast(message, kind = "info") {
+    setToast({ id: Date.now(), message, kind });
+    setTimeout(() => setToast((t) => (t && t.message === message ? null : t)), 4000);
+  }
+  // Cible du deep-link ?projet=<id> capturée au tout début du bootstrap, AVANT
+  // tout strip d'URL. Consommée une fois après loadProjets.
+  const pendingProjetIdRef = useRef(null);
   const [edits, setEdits] = useState({});
   const [activeItems, setActiveItems] = useState(new Set());
   const [saving, setSaving] = useState(new Set());
@@ -440,6 +450,20 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
+    // Capture ?projet=<id> AVANT que captureTokenFromUrl strip ?token=, et
+    // strip soi-même le param pour qu'un F5 ne ré-ouvre pas le projet en boucle.
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const projetId = params.get("projet");
+      if (projetId && /^\d+$/.test(projetId)) {
+        pendingProjetIdRef.current = parseInt(projetId, 10);
+        params.delete("projet");
+        const qs = params.toString();
+        const newUrl = window.location.pathname + (qs ? `?${qs}` : "") + window.location.hash;
+        window.history.replaceState({}, "", newUrl);
+      }
+    } catch { /* ignore */ }
+
     async function bootstrap() {
       captureTokenFromUrl();
       const token = getJwt();
@@ -463,6 +487,24 @@ export default function App() {
         setAuthStatus("ready");
         // Premier chargement des projets dès qu'on a le user.
         try { await loadProjets(me.id); } catch { /* l'UI affichera vide */ }
+        // Deep-link : si l'URL contenait ?projet=<id>, l'ouvrir maintenant.
+        const targetId = pendingProjetIdRef.current;
+        if (targetId != null) {
+          pendingProjetIdRef.current = null;
+          try {
+            const projetRes = await authFetch(`${API_URL}/budget/projets/${targetId}`);
+            if (projetRes.status === 404 || projetRes.status === 403) {
+              showToast("Projet introuvable", "error");
+            } else if (projetRes.ok) {
+              const projet = await projetRes.json();
+              if (!cancelled) await ouvrirProjet(projet);
+            } else {
+              showToast("Impossible d'ouvrir le projet", "error");
+            }
+          } catch {
+            showToast("Impossible d'ouvrir le projet", "error");
+          }
+        }
       } catch {
         // Erreur réseau : on reste en loading, l'utilisateur peut retry.
         // Pas de redirection brutale (le backend peut juste être down 2s).
@@ -1132,9 +1174,29 @@ export default function App() {
     );
   }
 
+  const toastBanner = toast ? (
+    <div
+      role="status"
+      aria-live="polite"
+      style={{
+        position: "fixed", top: 24, right: 24, zIndex: 1200,
+        background: toast.kind === "error" ? "#fef2f2" : "#ecfdf5",
+        color: toast.kind === "error" ? "#991b1b" : "#065f46",
+        border: `1px solid ${toast.kind === "error" ? "#fecaca" : "#6ee7b7"}`,
+        padding: "12px 16px", borderRadius: 8,
+        fontSize: 14, fontWeight: 500,
+        boxShadow: "0 8px 24px rgba(15,23,42,0.12)",
+        maxWidth: 420,
+      }}
+    >
+      {toast.message}
+    </div>
+  ) : null;
+
   if (page === "projets") {
     return (
       <div style={styles.app}>
+        {toastBanner}
         <Nav />
         <div style={styles.page}>
           <h1 style={styles.pageTitle}>Mes projets</h1>
@@ -1204,6 +1266,7 @@ export default function App() {
   if (page === "nouveau-projet") {
     return (
       <div style={styles.app}>
+        {toastBanner}
         <Nav />
         <div style={styles.page}>
           <button style={styles.btnBack} onClick={() => setPage("projets")}>← Retour</button>
@@ -1339,6 +1402,7 @@ export default function App() {
   if (page === "budget") {
     return (
       <div style={styles.app}>
+        {toastBanner}
         <Nav />
         <div style={styles.page}>
           <button style={styles.btnBack} onClick={() => { setPage("projets"); loadProjets(user.id); }}>
@@ -2017,6 +2081,7 @@ export default function App() {
     };
     return (
       <div style={styles.app}>
+        {toastBanner}
         <Nav />
         <div style={styles.page}>
           <button style={styles.btnBack} onClick={() => { setPage("projets"); loadProjets(user.id); }}>
