@@ -44,8 +44,83 @@
   --ad-border-blue-hover: #9bb8ee;/* bordure bleue au hover */
   --ad-focus: rgba(37, 99, 235, 0.10);
 
+  /* Direction "Adision Design" — palette étendue */
+  --adision-blue: #1e3a8a;
+  --adision-blue-soft: #eef4ff;
+  --adision-green: #10b981;
+  --adision-green-soft: #ecfdf5;
+  --adision-red: #ef4444;
+  --adision-red-soft: #fef2f2;
+  --adision-text: #0f172a;
+  --adision-text-muted: #64748b;
+  --adision-border: #e2e8f0;
+  --adision-bg: #f8fafc;
+  --adision-card-bg: #ffffff;
+  --adision-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --adision-shadow-hover: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --adision-shadow-modal: 0 20px 40px rgba(15, 23, 42, 0.15);
+
   /* Typographie */
   --ad-font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+/* ─── Cards "Adision Design" ──────────────────────────────────────────── */
+.adision-card {
+  background: var(--adision-card-bg);
+  border: 1px solid var(--adision-border);
+  border-radius: 8px;
+  box-shadow: var(--adision-shadow);
+}
+
+.adision-projet-card {
+  transition: box-shadow 150ms ease, transform 150ms ease, border-color 150ms ease;
+}
+.adision-projet-card:hover {
+  box-shadow: var(--adision-shadow-hover) !important;
+  border-color: var(--adision-blue-soft) !important;
+  transform: translateY(-1px);
+}
+
+/* ─── Lignes du tableau Budget : zebra discrète + hover bleu pâle ────── */
+.adision-budget-row:hover td:not([data-inflated="yes"]) {
+  background: var(--adision-blue-soft) !important;
+}
+
+/* ─── Bouton + Ligne (outlined vert) ─────────────────────────────────── */
+.adision-btn-add-line {
+  transition: background 150ms ease, border-color 150ms ease;
+}
+.adision-btn-add-line:hover:not(:disabled) {
+  background: var(--adision-green-soft) !important;
+  border-color: var(--adision-green) !important;
+}
+
+/* ─── Bouton X de suppression : icône rouge sans bordure, hover doux ── */
+.adision-btn-row-delete {
+  transition: background 150ms ease, color 150ms ease;
+}
+.adision-btn-row-delete:hover:not(:disabled) {
+  background: var(--adision-red-soft) !important;
+  color: var(--adision-red) !important;
+}
+
+/* ─── Badge "sauvegardé ✓" ──────────────────────────────────────────── */
+.adision-saved-badge {
+  background: var(--adision-green-soft);
+  color: var(--adision-green);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  font-style: normal;
+}
+
+/* ─── Header de nav : transition douce sur les boutons à droite ──────── */
+.adision-nav-btn {
+  transition: background 150ms ease, border-color 150ms ease;
+}
+.adision-nav-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 /* ─── Inputs / textarea / select ──────────────────────────────────────── */

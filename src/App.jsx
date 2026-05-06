@@ -79,9 +79,9 @@ const AUTOSAVE_DELAY = 3000;
 const styles = {
   app: {
     fontFamily: "\"Helvetica Neue\", Helvetica, Arial, sans-serif",
-    background: "#f5f6fa",
+    background: "#f8fafc",
     minHeight: "100vh",
-    color: "#1a1a2e",
+    color: "#0f172a",
   },
   loginPage: {
     display: "flex", alignItems: "center", justifyContent: "center",
@@ -108,54 +108,60 @@ const styles = {
   },
   loginError: { color: "#ef4444", fontSize: 13, marginTop: 8 },
   nav: {
-    background: "#1e3a8a", padding: "0 24px", display: "flex",
-    alignItems: "center", justifyContent: "space-between", height: 52,
+    background: "#1e3a8a", padding: "0 28px", display: "flex",
+    alignItems: "center", justifyContent: "space-between", height: 56,
   },
-  navLogo: { color: "#fff", fontWeight: 700, fontSize: 18, letterSpacing: "-0.5px" },
-  navUser: { color: "#93c5fd", fontSize: 13, display: "flex", alignItems: "center", gap: 12 },
+  navLogo: {
+    color: "#fff", fontWeight: 700, fontSize: 20, letterSpacing: "-0.3px",
+    display: "flex", alignItems: "center", gap: 10,
+  },
+  navUser: { color: "#93c5fd", fontSize: 13, display: "flex", alignItems: "center", gap: 14 },
   navLogout: {
     background: "transparent", border: "1px solid #3b82f6", color: "#93c5fd",
-    padding: "4px 12px", borderRadius: 6, fontSize: 12, cursor: "pointer",
+    padding: "5px 14px", borderRadius: 6, fontSize: 12, cursor: "pointer",
   },
-  page: { padding: "20px 24px" },
-  pageTitle: { fontSize: 22, fontWeight: 700, color: "#1e3a8a", marginBottom: 20 },
+  page: { padding: "32px 32px" },
+  pageTitle: { fontSize: 28, fontWeight: 700, color: "#0f172a", marginBottom: 28, letterSpacing: "-0.5px" },
   projetsGrid: {
-    display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-    gap: 16, marginBottom: 24,
+    display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+    gap: 20, marginBottom: 28,
   },
   projetCard: {
-    background: "#fff", borderRadius: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
-    padding: "18px", cursor: "pointer", border: "2px solid transparent", transition: "border-color 0.2s",
+    background: "#ffffff", borderRadius: 8, boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+    padding: "20px", cursor: "pointer", border: "1px solid #e2e8f0",
   },
-  projetCardTitle: { fontSize: 15, fontWeight: 700, color: "#1e3a8a", marginBottom: 6 },
+  projetCardTitle: { fontSize: 16, fontWeight: 700, color: "#0f172a", marginBottom: 8 },
   projetCardInfo: { fontSize: 13, color: "#64748b", marginBottom: 4 },
   projetCardStatut: {
-    display: "inline-block", padding: "2px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600, marginTop: 8,
+    display: "inline-block", padding: "2px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600, marginTop: 10,
   },
   newProjetCard: {
-    background: "#eff6ff", border: "2px dashed #93c5fd", borderRadius: 10, padding: "18px",
+    background: "#eef4ff", border: "2px dashed #c7d7f5", borderRadius: 8, padding: "20px",
     cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center",
-    justifyContent: "center", minHeight: 110, color: "#2563eb", fontWeight: 600, fontSize: 14,
+    justifyContent: "center", minHeight: 130, color: "#1e3a8a", fontWeight: 600, fontSize: 14,
   },
   card: {
-    background: "#fff", borderRadius: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
-    overflow: "hidden", marginBottom: 20,
+    background: "#ffffff", borderRadius: 8, boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+    border: "1px solid #e2e8f0", overflow: "hidden", marginBottom: 24,
   },
   cardHeader: {
     display: "flex", justifyContent: "space-between", alignItems: "center",
-    padding: "12px 20px", borderBottom: "1px solid #e2e8f0", background: "#f8fafc",
+    padding: "16px 24px", borderBottom: "1px solid #e2e8f0", background: "#ffffff",
   },
-  cardTitle: { fontSize: 15, fontWeight: 700, color: "#1e3a8a", margin: 0 },
-  cardBody: { padding: "20px" },
+  cardTitle: {
+    fontSize: 13, fontWeight: 600, color: "#1e3a8a", margin: 0,
+    textTransform: "uppercase", letterSpacing: "0.5px",
+  },
+  cardBody: { padding: "24px" },
   form: { display: "flex", flexDirection: "column", gap: 14 },
   formRow: { display: "flex", gap: 14 },
   formGroup: { display: "flex", flexDirection: "column", flex: 1 },
   formLabel: {
-    fontSize: 12, fontWeight: 600, color: "#475569", textTransform: "uppercase",
-    letterSpacing: "0.05em", marginBottom: 6,
+    fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase",
+    letterSpacing: "1px", marginBottom: 6,
   },
-  formInput: { padding: "8px 12px", border: "1px solid #dbe3f0", borderRadius: 6, fontSize: 14, background: "#ffffff", outline: "none" },
-  formSelect: { padding: "8px 12px", border: "1px solid #dbe3f0", borderRadius: 6, fontSize: 14, background: "#ffffff", outline: "none" },
+  formInput: { padding: "10px 12px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 14, color: "#0f172a", background: "#ffffff", outline: "none" },
+  formSelect: { padding: "10px 12px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 14, color: "#0f172a", background: "#ffffff", outline: "none" },
   btnPrimary: {
     padding: "7px 18px", background: "#2563eb", color: "#fff", border: "none",
     borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer",
@@ -169,12 +175,12 @@ const styles = {
     borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer", marginBottom: 16,
   },
   btnDelete: {
-    padding: "4px 8px", background: "#ef4444", color: "#fff", border: "none",
-    borderRadius: 5, fontSize: 12, fontWeight: 600, cursor: "pointer",
+    padding: "4px 8px", background: "transparent", color: "#ef4444",
+    border: "none", borderRadius: 4, fontSize: 14, fontWeight: 700, cursor: "pointer",
   },
   btnAddRow: {
-    padding: "4px 8px", background: "#ecfdf5", color: "#10b981",
-    border: "1px solid #6ee7b7", borderRadius: 5, fontSize: 11, fontWeight: 600,
+    padding: "5px 10px", background: "#ffffff", color: "#10b981",
+    border: "1px solid #10b981", borderRadius: 6, fontSize: 11, fontWeight: 600,
     cursor: "pointer", whiteSpace: "nowrap", marginRight: 4,
   },
   btnToggleActive: {
@@ -187,43 +193,44 @@ const styles = {
   },
   table: { width: "100%", borderCollapse: "collapse", fontSize: 13 },
   th: {
-    padding: "9px 10px", textAlign: "left", background: "#1e3a8a", color: "#fff",
-    fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap",
+    padding: "12px 12px", textAlign: "left", background: "#1e3a8a", color: "#fff",
+    fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.5px", whiteSpace: "nowrap",
   },
-  td: { padding: "7px 10px", borderBottom: "1px solid #e2e8f0", verticalAlign: "middle" },
+  td: { padding: "8px 12px", borderBottom: "1px solid #e2e8f0", verticalAlign: "middle" },
   trEven: { background: "#f8fafc" },
-  trOdd: { background: "#fff" },
+  trOdd: { background: "#ffffff" },
   trInactive: { background: "#f1f5f9", opacity: 0.5 },
   trGroup: { background: "#1e3a8a", cursor: "pointer", userSelect: "none" },
-  tdGroup: { padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#fff" },
-  tdGroupTotal: { padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#fff", textAlign: "right", whiteSpace: "nowrap" },
+  tdGroup: { padding: "12px 16px", fontWeight: 700, fontSize: 12, color: "#fff", letterSpacing: "0.3px" },
+  tdGroupTotal: { padding: "12px 16px", fontWeight: 700, fontSize: 12, color: "#fff", textAlign: "right", whiteSpace: "nowrap" },
   input: {
-    padding: "4px 7px", border: "1px solid #dbe3f0", borderRadius: 6, fontSize: 12,
-    width: "100%", boxSizing: "border-box", background: "#ffffff", outline: "none",
+    padding: "6px 10px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 13,
+    width: "100%", boxSizing: "border-box", color: "#0f172a", background: "#ffffff", outline: "none",
   },
   inputDisabled: {
     padding: "4px 7px", border: "1px solid #e2e8f0", borderRadius: 5, fontSize: 12,
     width: "100%", boxSizing: "border-box", background: "#f1f5f9", color: "#94a3b8",
   },
   select: {
-    padding: "4px 7px", border: "1px solid #dbe3f0", borderRadius: 6, fontSize: 12,
-    width: "100%", background: "#ffffff", outline: "none",
+    padding: "6px 10px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 13,
+    width: "100%", color: "#0f172a", background: "#ffffff", outline: "none",
   },
   totalRow: {
-    textAlign: "right", padding: "14px 20px", fontSize: 15, fontWeight: 700,
-    color: "#1e3a8a", borderTop: "2px solid #2563eb", background: "#eff6ff",
+    textAlign: "right", padding: "18px 24px", fontSize: 18, fontWeight: 700,
+    color: "#ffffff", background: "#1e3a8a", letterSpacing: "0.3px",
   },
   amountStrong: { fontWeight: 700, color: "#1e3a8a" },
   emptyMsg: { padding: 24, textAlign: "center", color: "#94a3b8", fontStyle: "italic" },
   loading: { padding: 32, textAlign: "center", color: "#64748b", fontStyle: "italic" },
   autosaveStatus: { fontSize: 12, fontStyle: "italic" },
   paramsBar: {
-    display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 16, background: "#fff",
-    padding: "12px 20px", borderRadius: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", alignItems: "center",
+    display: "flex", gap: 20, flexWrap: "wrap", marginBottom: 24, background: "#ffffff",
+    padding: "16px 24px", borderRadius: 8, border: "1px solid #e2e8f0",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)", alignItems: "center",
   },
   paramLabel: {
-    display: "flex", flexDirection: "column", gap: 4, fontSize: 11, fontWeight: 600,
-    color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em",
+    display: "flex", flexDirection: "column", gap: 6, fontSize: 11, fontWeight: 600,
+    color: "#64748b", textTransform: "uppercase", letterSpacing: "1px",
   },
   paramInput: { padding: "5px 8px", border: "1px solid #dbe3f0", borderRadius: 6, fontSize: 13, width: 90, background: "#ffffff", outline: "none" },
   statBadge: {
@@ -1032,13 +1039,21 @@ export default function App() {
 
   const Nav = () => (
     <nav style={styles.nav}>
-      <div style={styles.navLogo}>Ad BUD</div>
+      <div style={styles.navLogo}>
+        <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect x="0" y="0" width="9" height="9" fill="#ffffff" />
+          <rect x="11" y="0" width="9" height="9" fill="#93c5fd" />
+          <rect x="0" y="11" width="9" height="9" fill="#ef4444" />
+          <rect x="11" y="11" width="9" height="9" fill="#10b981" />
+        </svg>
+        <span>Ad BUD</span>
+      </div>
       <div style={styles.navUser}>
         <span>👤 {user?.nom}</span>
         {user?.role === "admin" && page !== "admin" && (
-          <button style={styles.navLogout} onClick={() => setPage("admin")}>🛠️ Admin</button>
+          <button className="adision-nav-btn" style={styles.navLogout} onClick={() => setPage("admin")}>🛠️ Admin</button>
         )}
-        <button style={styles.navLogout} onClick={handleLogout}>Déconnexion</button>
+        <button className="adision-nav-btn" style={styles.navLogout} onClick={handleLogout}>Déconnexion</button>
       </div>
     </nav>
   );
@@ -1076,9 +1091,8 @@ export default function App() {
           <h1 style={styles.pageTitle}>Mes projets</h1>
           <div style={styles.projetsGrid}>
             {projets.map((p) => (
-              <div key={p.id} style={{ ...styles.projetCard, position: "relative" }} onClick={() => ouvrirProjet(p)}
-                onMouseEnter={(e) => e.currentTarget.style.borderColor = "#2563eb"}
-                onMouseLeave={(e) => e.currentTarget.style.borderColor = "transparent"}>
+              <div key={p.id} className="adision-projet-card"
+                style={{ ...styles.projetCard, position: "relative" }} onClick={() => ouvrirProjet(p)}>
                 <button
                   onClick={async (e) => {
                     e.stopPropagation();
@@ -1290,13 +1304,14 @@ export default function App() {
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               {autosaveStatus && (
-                <span style={{
-                  ...styles.autosaveStatus,
-                  color: autosaveStatus.includes("✓") ? "#10b981"
-                    : autosaveStatus.includes("✗") ? "#ef4444" : "#64748b",
-                }}>
-                  {autosaveStatus}
-                </span>
+                autosaveStatus.includes("✓") ? (
+                  <span className="adision-saved-badge">{autosaveStatus}</span>
+                ) : (
+                  <span style={{
+                    ...styles.autosaveStatus,
+                    color: autosaveStatus.includes("✗") ? "#ef4444" : "#64748b",
+                  }}>{autosaveStatus}</span>
+                )
               )}
               <button
                 className="ad-btn-secondary"
@@ -1344,17 +1359,18 @@ export default function App() {
             <div style={styles.statBadge}>Surface gypse : {surfaceGypse.toFixed(2)} pi²</div>
           </div>
 
-          <div style={{ marginBottom: 16 }}>
+          <div className="adision-card" style={{ padding: "20px 24px", marginBottom: 24 }}>
             <label style={{ display: "block", fontSize: 13, fontWeight: 600,
-                            color: "#1e3a8a", marginBottom: 6 }}>
+                            color: "#1e3a8a", marginBottom: 10,
+                            textTransform: "uppercase", letterSpacing: "0.5px" }}>
               Notes du projet
             </label>
             <textarea value={notes} onChange={(e) => updateNotes(e.target.value)}
               placeholder="Notes, contexte, rappels pour ce projet…"
-              style={{ width: "100%", minHeight: 80, padding: 10, fontSize: 13,
-                       fontFamily: "inherit", borderRadius: 8,
-                       border: "1px solid #dbe3f0", background: "#ffffff",
-                       resize: "vertical", boxSizing: "border-box" }} />
+              style={{ width: "100%", minHeight: 80, padding: "12px 14px", fontSize: 14,
+                       color: "#0f172a", fontFamily: "inherit", borderRadius: 6,
+                       border: "1px solid #e2e8f0", background: "#ffffff",
+                       resize: "vertical", boxSizing: "border-box", outline: "none" }} />
           </div>
 
           {loading ? <p style={styles.loading}>Chargement…</p> : (
@@ -1407,7 +1423,7 @@ export default function App() {
                                 const totalIsInflated = adminFactor !== 1;
 
                                 return (
-                                  <tr key={ligne.id} style={{
+                                  <tr key={ligne.id} className="adision-budget-row" style={{
                                     ...(isActive ? (idx % 2 === 0 ? styles.trEven : styles.trOdd) : styles.trInactive),
                                     outline: isSaving ? "1px solid #93c5fd" : "none",
                                   }}>
@@ -1486,11 +1502,11 @@ export default function App() {
                                     </td>
                                     {/* Actions */}
                                     <td style={{ ...styles.td, width: 120, whiteSpace: "nowrap" }}>
-                                      <button style={styles.btnAddRow} onClick={() => ajouterLigneApres(ligne)}>
+                                      <button className="adision-btn-add-line" style={styles.btnAddRow} onClick={() => ajouterLigneApres(ligne)}>
                                         + Ligne
                                       </button>
                                       {peutSupprimer && (
-                                        <button onClick={() => supprimerLigne(ligne.id)} style={styles.btnDelete}>
+                                        <button className="adision-btn-row-delete" onClick={() => supprimerLigne(ligne.id)} style={styles.btnDelete}>
                                           ✕
                                         </button>
                                       )}
@@ -1504,8 +1520,8 @@ export default function App() {
                       </tbody>
                     </table>
                   </div>
-                  <div style={{ background: "#fff", borderTop: "2px solid #2563eb",
-                                padding: "12px 20px" }}>
+                  <div style={{ background: "#ffffff", borderTop: "1px solid #e2e8f0",
+                                padding: "20px 24px 0" }}>
                     {groupTotals.map((g) => {
                       if (g.subtotal <= 0) return null;
                       const pctStr = pctVal(g.pctField);
@@ -1524,7 +1540,7 @@ export default function App() {
                                            fontWeight: 600 }}>
                               <input type="checkbox" checked={vis.sousTotal}
                                 onChange={() => toggleTotalSousTotal(g.key)}
-                                style={{ accentColor: "#10b981", cursor: "pointer" }}
+                                style={{ accentColor: "#10b981", cursor: "pointer", width: 16, height: 16 }}
                                 title="Afficher / masquer ce sous-total et son admin & profit" />
                               Sous-total {g.label}
                             </span>
@@ -1542,7 +1558,8 @@ export default function App() {
                                 disabled={!vis.sousTotal}
                                 onChange={() => toggleTotalAdminProfit(g.key)}
                                 style={{ accentColor: "#10b981",
-                                         cursor: vis.sousTotal ? "pointer" : "not-allowed" }}
+                                         cursor: vis.sousTotal ? "pointer" : "not-allowed",
+                                         width: 16, height: 16 }}
                                 title={vis.sousTotal ? "Afficher / masquer cet admin & profit"
                                                      : "Cocher d'abord le sous-total"} />
                               Administration et profit
@@ -1560,12 +1577,15 @@ export default function App() {
                         </div>
                       );
                     })}
-                    <div style={{ borderTop: "2px solid #1e3a8a", marginTop: 4, paddingTop: 12,
-                                  display: "flex", justifyContent: "space-between",
-                                  fontSize: 16, fontWeight: 800, color: "#1e3a8a" }}>
-                      <span>TOTAL GÉNÉRAL</span>
-                      <span>{totalGeneral.toFixed(2)} $</span>
-                    </div>
+                  </div>
+                  <div style={{
+                    display: "flex", justifyContent: "space-between",
+                    background: "#1e3a8a", color: "#ffffff",
+                    padding: "18px 24px", fontSize: 18, fontWeight: 700,
+                    letterSpacing: "0.3px",
+                  }}>
+                    <span>TOTAL GÉNÉRAL</span>
+                    <span>{totalGeneral.toFixed(2)} $</span>
                   </div>
                 </>
               )}
@@ -1582,7 +1602,7 @@ export default function App() {
               style={{
                 background: "#fff", borderRadius: 12, padding: 24,
                 width: 720, maxWidth: "92vw", maxHeight: "85vh",
-                overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+                overflowY: "auto", boxShadow: "0 20px 40px rgba(15, 23, 42, 0.15)",
               }}>
               <h2 style={{ margin: "0 0 16px", color: "#1e3a8a", fontSize: 18 }}>
                 ✏️ Modifier les informations du projet
@@ -1703,7 +1723,7 @@ export default function App() {
               style={{
                 background: "#fff", borderRadius: 12, padding: 24,
                 width: 460, maxWidth: "90vw", maxHeight: "85vh",
-                overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+                overflowY: "auto", boxShadow: "0 20px 40px rgba(15, 23, 42, 0.15)",
               }}>
               <h2 style={{ margin: "0 0 16px", color: "#1e3a8a", fontSize: 18 }}>
                 📄 Générer un rapport PDF
@@ -1860,11 +1880,14 @@ export default function App() {
             <h1 style={{ ...styles.pageTitle, marginBottom: 0 }}>🛠️ Admin — BD maître</h1>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               {autosaveStatus && (
-                <span style={{
-                  ...styles.autosaveStatus,
-                  color: autosaveStatus.includes("✓") ? "#10b981"
-                    : autosaveStatus.includes("✗") ? "#ef4444" : "#64748b",
-                }}>{autosaveStatus}</span>
+                autosaveStatus.includes("✓") ? (
+                  <span className="adision-saved-badge">{autosaveStatus}</span>
+                ) : (
+                  <span style={{
+                    ...styles.autosaveStatus,
+                    color: autosaveStatus.includes("✗") ? "#ef4444" : "#64748b",
+                  }}>{autosaveStatus}</span>
+                )
               )}
               <button style={styles.btnPrimary} onClick={adminCreateItem}>+ Ajouter un item</button>
             </div>
