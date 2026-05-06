@@ -250,7 +250,10 @@ export default function App() {
   const [loginNom, setLoginNom] = useState("");
   const [loginError, setLoginError] = useState("");
   const [nouveauProjet, setNouveauProjet] = useState({
-    nom: "", client: "", adresse: "", description: "", statut: "en cours",
+    nom: "", adresse: "", description: "", statut: "en cours",
+    nom_client: "", contact_client: "", email_client: "", telephone_client: "",
+    numero_projet: "", date_debut: "", date_fin: "",
+    contact_entrepreneur: "", email_entrepreneur: "", telephone_entrepreneur: "",
   });
   const [globalParams, setGlobalParams] = useState({
     mobilisation: "", surfacePlancher: "", hauteurCloisons: "", longueurCloisons: "",
@@ -835,46 +838,120 @@ export default function App() {
           <h1 style={styles.pageTitle}>Nouveau projet</h1>
           <div style={styles.card}>
             <div style={styles.cardBody}>
-              <div style={styles.form}>
-                <div style={styles.formRow}>
-                  <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>Nom du projet *</label>
-                    <input style={styles.formInput} value={nouveauProjet.nom}
-                      onChange={(e) => setNouveauProjet((p) => ({ ...p, nom: e.target.value }))}
-                      placeholder="Ex: Rénovation bureau 3e étage" />
-                  </div>
-                  <div style={styles.formGroup}>
-                    <label style={styles.formLabel}>Client</label>
-                    <input style={styles.formInput} value={nouveauProjet.client}
-                      onChange={(e) => setNouveauProjet((p) => ({ ...p, client: e.target.value }))}
-                      placeholder="Nom du client" />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 16 }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#475569",
+                                marginBottom: 10, textTransform: "uppercase",
+                                letterSpacing: 0.5 }}>Client</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div>
+                      <label style={styles.formLabel}>Nom du projet *</label>
+                      <input style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                        value={nouveauProjet.nom}
+                        onChange={(e) => setNouveauProjet((p) => ({ ...p, nom: e.target.value }))}
+                        placeholder="Ex: Rénovation bureau 3e étage" />
+                    </div>
+                    <div>
+                      <label style={styles.formLabel}>Nom du client</label>
+                      <input style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                        value={nouveauProjet.nom_client}
+                        onChange={(e) => setNouveauProjet((p) => ({ ...p, nom_client: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={styles.formLabel}>Adresse</label>
+                      <input style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                        value={nouveauProjet.adresse}
+                        onChange={(e) => setNouveauProjet((p) => ({ ...p, adresse: e.target.value }))}
+                        placeholder="123 rue Exemple, Montréal" />
+                    </div>
+                    <div>
+                      <label style={styles.formLabel}>Nom du contact</label>
+                      <input style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                        value={nouveauProjet.contact_client}
+                        onChange={(e) => setNouveauProjet((p) => ({ ...p, contact_client: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={styles.formLabel}>Courriel</label>
+                      <input type="email" style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                        value={nouveauProjet.email_client}
+                        onChange={(e) => setNouveauProjet((p) => ({ ...p, email_client: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={styles.formLabel}>Téléphone</label>
+                      <input type="tel" style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                        value={nouveauProjet.telephone_client}
+                        onChange={(e) => setNouveauProjet((p) => ({ ...p, telephone_client: e.target.value }))} />
+                    </div>
                   </div>
                 </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.formLabel}>Adresse</label>
-                  <input style={styles.formInput} value={nouveauProjet.adresse}
-                    onChange={(e) => setNouveauProjet((p) => ({ ...p, adresse: e.target.value }))}
-                    placeholder="123 rue Exemple, Montréal" />
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#475569",
+                                marginBottom: 10, textTransform: "uppercase",
+                                letterSpacing: 0.5 }}>Entrepreneur</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div>
+                      <label style={styles.formLabel}>Numéro du projet</label>
+                      <input style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                        value={nouveauProjet.numero_projet}
+                        onChange={(e) => setNouveauProjet((p) => ({ ...p, numero_projet: e.target.value }))} />
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                      <div>
+                        <label style={styles.formLabel}>Date début travaux</label>
+                        <input type="date" style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                          value={nouveauProjet.date_debut}
+                          onChange={(e) => setNouveauProjet((p) => ({ ...p, date_debut: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label style={styles.formLabel}>Date fin travaux</label>
+                        <input type="date" style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                          value={nouveauProjet.date_fin}
+                          onChange={(e) => setNouveauProjet((p) => ({ ...p, date_fin: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div>
+                      <label style={styles.formLabel}>Contact entrepreneur</label>
+                      <input style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                        value={nouveauProjet.contact_entrepreneur}
+                        onChange={(e) => setNouveauProjet((p) => ({ ...p, contact_entrepreneur: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={styles.formLabel}>Courriel</label>
+                      <input type="email" style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                        value={nouveauProjet.email_entrepreneur}
+                        onChange={(e) => setNouveauProjet((p) => ({ ...p, email_entrepreneur: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={styles.formLabel}>Téléphone</label>
+                      <input type="tel" style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                        value={nouveauProjet.telephone_entrepreneur}
+                        onChange={(e) => setNouveauProjet((p) => ({ ...p, telephone_entrepreneur: e.target.value }))} />
+                    </div>
+                  </div>
                 </div>
-                <div style={styles.formGroup}>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+                <div>
                   <label style={styles.formLabel}>Description</label>
-                  <input style={styles.formInput} value={nouveauProjet.description}
+                  <input style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                    value={nouveauProjet.description}
                     onChange={(e) => setNouveauProjet((p) => ({ ...p, description: e.target.value }))}
                     placeholder="Description optionnelle" />
                 </div>
-                <div style={styles.formGroup}>
+                <div>
                   <label style={styles.formLabel}>Statut</label>
-                  <select style={styles.formSelect} value={nouveauProjet.statut}
+                  <select style={{ ...styles.formSelect, width: "100%", boxSizing: "border-box" }}
+                    value={nouveauProjet.statut}
                     onChange={(e) => setNouveauProjet((p) => ({ ...p, statut: e.target.value }))}>
                     <option value="en cours">En cours</option>
                     <option value="complété">Complété</option>
                     <option value="archivé">Archivé</option>
                   </select>
                 </div>
-                <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
-                  <button style={styles.btnPrimary} onClick={creerProjet}>Créer le projet</button>
-                  <button style={styles.btnSecondary} onClick={() => setPage("projets")}>Annuler</button>
-                </div>
+              </div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button style={styles.btnPrimary} onClick={creerProjet}>Créer le projet</button>
+                <button style={styles.btnSecondary} onClick={() => setPage("projets")}>Annuler</button>
               </div>
             </div>
           </div>
