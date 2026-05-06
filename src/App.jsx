@@ -247,6 +247,16 @@ function getPrefix(section) {
   return "Divers";
 }
 
+function getLineGroupKey(section) {
+  const prefix = getPrefix(section);
+  const n = parseInt(prefix, 10);
+  if (isNaN(n)) return null;
+  for (const g of BUDGET_GROUPS) {
+    if (g.matches(n)) return g.key;
+  }
+  return null;
+}
+
 function getPrefixLabel(prefix) {
   return prefix === "Divers" ? "Divers" : `Section ${prefix}`;
 }
@@ -913,6 +923,24 @@ export default function App() {
     return t;
   }, [grandTotal, groupTotals, pctEdits, projetActif]);
 
+  // Multiplicateur d'affichage par regroupement : si admin & profit décoché et
+  // sous-total coché, le total des lignes du regroupement est gonflé pour afficher
+  // la part d'admin & profit distribuée pro rata. Display-only : aucune écriture en BD.
+  const groupAdminFactors = useMemo(() => {
+    const factors = {};
+    for (const g of BUDGET_GROUPS) {
+      const vis = totalsVisibility[g.key] || { sousTotal: true, adminProfit: true };
+      if (vis.sousTotal && !vis.adminProfit) {
+        const raw = (g.pctField in pctEdits) ? pctEdits[g.pctField] : (projetActif?.[g.pctField] ?? 0);
+        const pct = normalizeNumber(raw) || 0;
+        factors[g.key] = 1 + pct / 100;
+      } else {
+        factors[g.key] = 1;
+      }
+    }
+    return factors;
+  }, [totalsVisibility, pctEdits, projetActif]);
+
   function toggleCollapsedBudget(prefix) {
     setCollapsedBudget((prev) => {
       const next = new Set(prev);
@@ -1333,6 +1361,10 @@ export default function App() {
                                 const isActive = activeItems.has(ligne.id);
                                 const isSaving = saving.has(ligne.id);
                                 const peutSupprimer = true;
+                                const lineGroupKey = getLineGroupKey(ligne.section);
+                                const adminFactor = lineGroupKey ? (groupAdminFactors[lineGroupKey] || 1) : 1;
+                                const displayedTotal = row.total * adminFactor;
+                                const totalIsInflated = adminFactor !== 1;
 
                                 return (
                                   <tr key={ligne.id} style={{
@@ -1394,8 +1426,16 @@ export default function App() {
                                         style={styles.input} />
                                     </td>
                                     {/* Total */}
-                                    <td style={{ ...styles.td, width: 100 }}>
-                                      <strong style={styles.amountStrong}>{row.total.toFixed(2)} $</strong>
+                                    <td style={{
+                                      ...styles.td, width: 100,
+                                      ...(totalIsInflated && {
+                                        background: "#fef3c7",
+                                        cursor: "not-allowed",
+                                      }),
+                                    }} title={totalIsInflated
+                                      ? "Inclut une part d'administration et profit, décocher pour éditer"
+                                      : undefined}>
+                                      <strong style={styles.amountStrong}>{displayedTotal.toFixed(2)} $</strong>
                                     </td>
                                     {/* Note */}
                                     <td style={{ ...styles.td, minWidth: 150 }}>
@@ -1432,6 +1472,8 @@ export default function App() {
                       const adminProfit = g.subtotal * pct / 100;
                       const vis = totalsVisibility[g.key] || { sousTotal: true, adminProfit: true };
                       const showAdmin = vis.sousTotal && vis.adminProfit;
+                      const distribute = vis.sousTotal && !vis.adminProfit;
+                      const displayedSubtotal = distribute ? g.subtotal + adminProfit : g.subtotal;
                       return (
                         <div key={g.key} style={{ borderBottom: "1px dashed #e2e8f0",
                                                   paddingBottom: 8, marginBottom: 8 }}>
@@ -1446,7 +1488,7 @@ export default function App() {
                               Sous-total {g.label}
                             </span>
                             <span style={{ fontWeight: 600, color: "#1e3a8a" }}>
-                              {vis.sousTotal ? `${g.subtotal.toFixed(2)} $` : "—"}
+                              {vis.sousTotal ? `${displayedSubtotal.toFixed(2)} $` : "—"}
                             </span>
                           </div>
                           <div style={{ display: "flex", justifyContent: "space-between",
