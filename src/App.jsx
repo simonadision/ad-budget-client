@@ -316,6 +316,7 @@ export default function App() {
   const [pdfFilters, setPdfFilters] = useState({
     inactifs: false, avecPrix: true, avecParametres: true,
     sections: new Set(), colonnes: new Set(),
+    sousTotaux: new Set(), adminProfits: new Set(),
   });
   const [adminItems, setAdminItems] = useState([]);
   const [adminEdits, setAdminEdits] = useState({});
@@ -595,6 +596,8 @@ export default function App() {
       avecParametres: true,
       sections: new Set(uniqueSections),
       colonnes: new Set(PDF_COLUMNS.map((c) => c.key)),
+      sousTotaux: new Set(BUDGET_GROUPS.map((g) => g.key)),
+      adminProfits: new Set(BUDGET_GROUPS.map((g) => g.key)),
     });
     setShowPdfModal(true);
   }
@@ -617,6 +620,29 @@ export default function App() {
     });
   }
 
+  function togglePdfSousTotal(key) {
+    setPdfFilters((prev) => {
+      const sousTotaux = new Set(prev.sousTotaux);
+      const adminProfits = new Set(prev.adminProfits);
+      if (sousTotaux.has(key)) {
+        sousTotaux.delete(key);
+        adminProfits.delete(key);
+      } else {
+        sousTotaux.add(key);
+      }
+      return { ...prev, sousTotaux, adminProfits };
+    });
+  }
+
+  function togglePdfAdminProfit(key) {
+    setPdfFilters((prev) => {
+      const adminProfits = new Set(prev.adminProfits);
+      if (adminProfits.has(key)) adminProfits.delete(key);
+      else adminProfits.add(key);
+      return { ...prev, adminProfits };
+    });
+  }
+
   function generatePdf() {
     if (!projetActif) return;
     const params = new URLSearchParams();
@@ -631,6 +657,16 @@ export default function App() {
     if (!allColsSelected && pdfFilters.colonnes.size > 0) {
       const ordered = PDF_COLUMNS.filter((c) => pdfFilters.colonnes.has(c.key)).map((c) => c.key);
       params.set("colonnes", ordered.join(","));
+    }
+    const allSousSelected = pdfFilters.sousTotaux.size === BUDGET_GROUPS.length;
+    if (!allSousSelected) {
+      const ordered = BUDGET_GROUPS.filter((g) => pdfFilters.sousTotaux.has(g.key)).map((g) => g.key);
+      params.set("sous_totaux", ordered.join(","));
+    }
+    const allAdminSelected = pdfFilters.adminProfits.size === BUDGET_GROUPS.length;
+    if (!allAdminSelected) {
+      const ordered = BUDGET_GROUPS.filter((g) => pdfFilters.adminProfits.has(g.key)).map((g) => g.key);
+      params.set("admin_profits", ordered.join(","));
     }
     if (globalParams.mobilisation) params.set("mobilisation", globalParams.mobilisation);
     if (globalParams.surfacePlancher) params.set("surface_plancher", globalParams.surfacePlancher);
@@ -1573,6 +1609,47 @@ export default function App() {
                     {c.label}
                   </label>
                 ))}
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#1e3a8a",
+                            marginBottom: 6, marginTop: 4 }}>
+                Sous-totaux et administration & profit
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12,
+                            border: "1px solid #e2e8f0", borderRadius: 6,
+                            padding: 8, marginBottom: 16 }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#475569", marginBottom: 6 }}>
+                    Sous-totaux
+                  </div>
+                  {BUDGET_GROUPS.map((g) => (
+                    <label key={g.key} style={{ display: "flex", alignItems: "center", gap: 8,
+                                                fontSize: 12, padding: "3px 0", cursor: "pointer" }}>
+                      <input type="checkbox" checked={pdfFilters.sousTotaux.has(g.key)}
+                        onChange={() => togglePdfSousTotal(g.key)} />
+                      {g.label}
+                    </label>
+                  ))}
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#475569", marginBottom: 6 }}>
+                    Administration et profit
+                  </div>
+                  {BUDGET_GROUPS.map((g) => {
+                    const stChecked = pdfFilters.sousTotaux.has(g.key);
+                    return (
+                      <label key={g.key} style={{ display: "flex", alignItems: "center", gap: 8,
+                                                  fontSize: 12, padding: "3px 0",
+                                                  cursor: stChecked ? "pointer" : "not-allowed",
+                                                  opacity: stChecked ? 1 : 0.5 }}>
+                        <input type="checkbox"
+                          checked={stChecked && pdfFilters.adminProfits.has(g.key)}
+                          disabled={!stChecked}
+                          onChange={() => togglePdfAdminProfit(g.key)} />
+                        {g.label}
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
               <div style={{ fontSize: 13, fontWeight: 600, color: "#1e3a8a",
                             marginBottom: 6, marginTop: 4 }}>
