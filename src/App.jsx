@@ -133,6 +133,14 @@ const styles = {
     color: "#fff", fontWeight: 700, fontSize: 20, letterSpacing: "-0.3px",
     display: "flex", alignItems: "center", gap: 10,
   },
+  navLeft: { display: "flex", alignItems: "center", gap: 24 },
+  navAdViu: {
+    color: "#fff", fontWeight: 600, fontSize: 16, letterSpacing: "-0.2px",
+    display: "flex", alignItems: "center", gap: 8,
+    padding: "6px 10px", borderRadius: 8,
+    textDecoration: "none", transition: "background 150ms ease",
+  },
+  navAdViuDisabled: { opacity: 0.5, cursor: "not-allowed" },
   navUser: { color: "#93c5fd", fontSize: 13, display: "flex", alignItems: "center", gap: 14 },
   navLogout: {
     background: "transparent", border: "1px solid #3b82f6", color: "#93c5fd",
@@ -1119,29 +1127,69 @@ export default function App() {
     );
   };
 
-  const Nav = () => (
-    <nav style={styles.nav}>
-      <div style={styles.navLogo}>
-        <svg width="26" height="26" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          {/* 4 branches en croix flottant directement sur le navy du header.
-              Branches top+right en bleu CLAIR (les originales #1e3a8a seraient
-              invisibles sur le navy), bottom rouge, left vert. */}
-          <rect x="27" y="6"  width="10" height="21" fill="#60a5fa" />
-          <rect x="37" y="27" width="21" height="10" fill="#60a5fa" />
-          <rect x="27" y="37" width="10" height="21" fill="#ef4444" />
-          <rect x="6"  y="27" width="21" height="10" fill="#10b981" />
-        </svg>
-        <span>Ad BUD</span>
-      </div>
-      <div style={styles.navUser}>
-        <span>👤 {user?.nom}</span>
-        {user?.role === "admin" && page !== "admin" && (
-          <button className="adision-nav-btn" style={styles.navLogout} onClick={() => setPage("admin")}>🛠️ Admin</button>
-        )}
-        <button className="adision-nav-btn" style={styles.navLogout} onClick={handleLogout}>Déconnexion</button>
-      </div>
-    </nav>
-  );
+  const Nav = () => {
+    const adViuActive = !!user?.has_ad_viu;
+    const AdViuMark = () => (
+      // Mark "+" — légèrement plus petit que celui d'Ad BUD pour subordonner
+      // visuellement le module compagnon.
+      <svg width="22" height="22" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect x="27" y="6"  width="10" height="21" fill="#60a5fa" />
+        <rect x="37" y="27" width="21" height="10" fill="#60a5fa" />
+        <rect x="27" y="37" width="10" height="21" fill="#ef4444" />
+        <rect x="6"  y="27" width="21" height="10" fill="#10b981" />
+      </svg>
+    );
+
+    return (
+      <nav style={styles.nav}>
+        <div style={styles.navLeft}>
+          <div style={styles.navLogo}>
+            <svg width="26" height="26" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              {/* 4 branches en croix flottant directement sur le navy du header.
+                  Branches top+right en bleu CLAIR (les originales #1e3a8a seraient
+                  invisibles sur le navy), bottom rouge, left vert. */}
+              <rect x="27" y="6"  width="10" height="21" fill="#60a5fa" />
+              <rect x="37" y="27" width="21" height="10" fill="#60a5fa" />
+              <rect x="27" y="37" width="10" height="21" fill="#ef4444" />
+              <rect x="6"  y="27" width="21" height="10" fill="#10b981" />
+            </svg>
+            <span>Ad BUD</span>
+          </div>
+
+          {adViuActive ? (
+            <a
+              href="https://viu.adision.ca"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="adision-nav-btn"
+              style={styles.navAdViu}
+              title="Ouvrir Ad VIU dans un nouvel onglet"
+            >
+              <AdViuMark />
+              <span>Ad VIU</span>
+            </a>
+          ) : (
+            <div
+              style={{ ...styles.navAdViu, ...styles.navAdViuDisabled }}
+              title="Module Ad VIU requis — contactez Adision pour activer"
+              aria-disabled="true"
+            >
+              <AdViuMark />
+              <span>Ad VIU</span>
+            </div>
+          )}
+        </div>
+
+        <div style={styles.navUser}>
+          <span>👤 {user?.nom}</span>
+          {user?.role === "admin" && page !== "admin" && (
+            <button className="adision-nav-btn" style={styles.navLogout} onClick={() => setPage("admin")}>🛠️ Admin</button>
+          )}
+          <button className="adision-nav-btn" style={styles.navLogout} onClick={handleLogout}>Déconnexion</button>
+        </div>
+      </nav>
+    );
+  };
 
   // ── Pages ─────────────────────────────────────────────────────────────────
 
