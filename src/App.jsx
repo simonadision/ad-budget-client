@@ -640,14 +640,21 @@ export default function App() {
   }
 
   function openPdfModal() {
+    const sousTotauxInit = new Set();
+    const adminProfitsInit = new Set();
+    for (const g of BUDGET_GROUPS) {
+      const vis = totalsVisibility[g.key] || { sousTotal: true, adminProfit: true };
+      if (vis.sousTotal) sousTotauxInit.add(g.key);
+      if (vis.adminProfit) adminProfitsInit.add(g.key);
+    }
     setPdfFilters({
       inactifs: false,
       avecPrix: true,
       avecParametres: true,
       sections: new Set(uniqueSections),
       colonnes: new Set(PDF_COLUMNS.map((c) => c.key)),
-      sousTotaux: new Set(BUDGET_GROUPS.map((g) => g.key)),
-      adminProfits: new Set(BUDGET_GROUPS.map((g) => g.key)),
+      sousTotaux: sousTotauxInit,
+      adminProfits: adminProfitsInit,
     });
     setShowPdfModal(true);
   }
