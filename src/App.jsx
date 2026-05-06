@@ -814,7 +814,7 @@ export default function App() {
                   onMouseLeave={(e) => { e.currentTarget.style.color = "#94a3b8"; e.currentTarget.style.background = "transparent"; }}
                 >🗑️</button>
                 <div style={styles.projetCardTitle}>{p.nom}</div>
-                {p.client && <div style={styles.projetCardInfo}>👤 {p.client}</div>}
+                {(p.nom_client || p.client) && <div style={styles.projetCardInfo}>👤 {p.nom_client || p.client}</div>}
                 {p.adresse && <div style={styles.projetCardInfo}>📍 {p.adresse}</div>}
                 <span style={{ ...styles.projetCardStatut, ...statutColor(p.statut) }}>{p.statut}</span>
               </div>
