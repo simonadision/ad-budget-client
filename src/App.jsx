@@ -1041,12 +1041,15 @@ export default function App() {
   const Nav = () => (
     <nav style={styles.nav}>
       <div style={styles.navLogo}>
-        <svg width="22" height="22" viewBox="0 0 70 70" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <rect x="0" y="0" width="70" height="70" rx="8" fill="#ffffff" />
-          <rect x="32" y="5"  width="6"  height="27" fill="#1e3a8a" />
-          <rect x="38" y="32" width="27" height="6"  fill="#1e3a8a" />
-          <rect x="32" y="38" width="6"  height="27" fill="#ef4444" />
-          <rect x="5"  y="32" width="27" height="6"  fill="#10b981" />
+        <svg width="26" height="26" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          {/* Fond blanc arrondi pour que les branches bleues ressortent sur le navy */}
+          <rect x="0" y="0" width="64" height="64" rx="8" fill="#ffffff" />
+          {/* Branches en croix, espace 10x10 vide au centre.
+              Top + Right en bleu marine, Bottom en rouge, Left en vert. */}
+          <rect x="27" y="6"  width="10" height="21" fill="#1e3a8a" />
+          <rect x="37" y="27" width="21" height="10" fill="#1e3a8a" />
+          <rect x="27" y="37" width="10" height="21" fill="#ef4444" />
+          <rect x="6"  y="27" width="21" height="10" fill="#10b981" />
         </svg>
         <span>Ad BUD</span>
       </div>
