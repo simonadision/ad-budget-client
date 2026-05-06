@@ -1042,12 +1042,11 @@ export default function App() {
     <nav style={styles.nav}>
       <div style={styles.navLogo}>
         <svg width="26" height="26" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          {/* Fond blanc arrondi pour que les branches bleues ressortent sur le navy */}
-          <rect x="0" y="0" width="64" height="64" rx="8" fill="#ffffff" />
-          {/* Branches en croix, espace 10x10 vide au centre.
-              Top + Right en bleu marine, Bottom en rouge, Left en vert. */}
-          <rect x="27" y="6"  width="10" height="21" fill="#1e3a8a" />
-          <rect x="37" y="27" width="21" height="10" fill="#1e3a8a" />
+          {/* 4 branches en croix flottant directement sur le navy du header.
+              Branches top+right en bleu CLAIR (les originales #1e3a8a seraient
+              invisibles sur le navy), bottom rouge, left vert. */}
+          <rect x="27" y="6"  width="10" height="21" fill="#60a5fa" />
+          <rect x="37" y="27" width="21" height="10" fill="#60a5fa" />
           <rect x="27" y="37" width="10" height="21" fill="#ef4444" />
           <rect x="6"  y="27" width="21" height="10" fill="#10b981" />
         </svg>
