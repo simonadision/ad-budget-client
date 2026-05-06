@@ -1426,15 +1426,16 @@ export default function App() {
                                         style={styles.input} />
                                     </td>
                                     {/* Total */}
-                                    <td style={{
-                                      ...styles.td, width: 100,
-                                      ...(totalIsInflated && {
-                                        background: "#fef3c7",
-                                        cursor: "not-allowed",
-                                      }),
-                                    }} title={totalIsInflated
-                                      ? "Inclut une part d'administration et profit, décocher pour éditer"
-                                      : undefined}>
+                                    <td
+                                      data-factor={adminFactor}
+                                      data-group={lineGroupKey || "none"}
+                                      data-inflated={totalIsInflated ? "yes" : "no"}
+                                      style={totalIsInflated
+                                        ? { ...styles.td, width: 100, background: "#fef3c7", cursor: "not-allowed" }
+                                        : { ...styles.td, width: 100 }}
+                                      title={totalIsInflated
+                                        ? "Inclut une part d'administration et profit, décocher pour éditer"
+                                        : undefined}>
                                       <strong style={styles.amountStrong}>{displayedTotal.toFixed(2)} $</strong>
                                     </td>
                                     {/* Note */}
