@@ -243,8 +243,9 @@ export default function App() {
   const autosaveTimers = useRef({});
   const [notes, setNotes] = useState("");
   const notesTimer = useRef(null);
-  const [projetEdits, setProjetEdits] = useState({});
-  const projetTimers = useRef({});
+  const [showInfoModal, setShowInfoModal] = useState(false);
+  const [infoEdits, setInfoEdits] = useState({});
+  const [infoSaving, setInfoSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginNom, setLoginNom] = useState("");
@@ -365,9 +366,6 @@ export default function App() {
   async function ouvrirProjet(projet) {
     setProjetActif(projet);
     setNotes(projet.notes ?? "");
-    setProjetEdits({});
-    Object.values(projetTimers.current).forEach((t) => clearTimeout(t));
-    projetTimers.current = {};
     setLoading(true);
     setEdits({});
     setActiveItems(new Set());
@@ -454,34 +452,49 @@ export default function App() {
     }
   }
 
-  function projetVal(field, fallback = "") {
-    if (field in projetEdits) return projetEdits[field];
-    const v = projetActif?.[field];
-    return v == null ? fallback : v;
-  }
+  const INFO_FIELDS = [
+    "nom",
+    "nom_client", "contact_client", "email_client", "telephone_client",
+    "numero_projet", "date_debut", "date_fin",
+    "contact_entrepreneur", "email_entrepreneur", "telephone_entrepreneur",
+  ];
 
-  function updateProjetField(field, value) {
-    setProjetEdits((prev) => ({ ...prev, [field]: value }));
-    if (projetTimers.current[field]) clearTimeout(projetTimers.current[field]);
-    setAutosaveStatus("en attente de sauvegarde…");
-    projetTimers.current[field] = setTimeout(() => saveProjetField(field, value), AUTOSAVE_DELAY);
-  }
-
-  async function saveProjetField(field, value) {
+  function openInfoModal() {
     if (!projetActif) return;
+    const init = {};
+    for (const f of INFO_FIELDS) {
+      const v = projetActif[f];
+      if (f === "date_debut" || f === "date_fin") {
+        init[f] = v ? String(v).slice(0, 10) : "";
+      } else {
+        init[f] = v == null ? "" : v;
+      }
+    }
+    setInfoEdits(init);
+    setInfoSaving(false);
+    setShowInfoModal(true);
+  }
+
+  function setInfoField(field, value) {
+    setInfoEdits((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function saveInfoModal() {
+    if (!projetActif) return;
+    setInfoSaving(true);
     try {
       const res = await fetch(`${API_URL}/budget/projets/${projetActif.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [field]: value }),
+        body: JSON.stringify(infoEdits),
       });
       if (!res.ok) throw new Error();
-      setProjetActif((prev) => (prev ? { ...prev, [field]: value } : prev));
-      setProjetEdits((prev) => { const next = { ...prev }; delete next[field]; return next; });
-      setAutosaveStatus("sauvegardé ✓");
-      setTimeout(() => setAutosaveStatus(""), 2000);
+      setProjetActif((prev) => (prev ? { ...prev, ...infoEdits } : prev));
+      setShowInfoModal(false);
     } catch {
-      setAutosaveStatus("erreur ✗");
+      alert("Erreur lors de la sauvegarde des informations.");
+    } finally {
+      setInfoSaving(false);
     }
   }
 
@@ -986,6 +999,13 @@ export default function App() {
                 </span>
               )}
               <button
+                onClick={openInfoModal}
+                style={styles.btnSecondary}
+                title="Modifier les informations du projet"
+              >
+                ✏️ Modifier les informations
+              </button>
+              <button
                 onClick={openPdfModal}
                 style={styles.btnSecondary}
                 title="Générer un rapport PDF"
@@ -1019,97 +1039,6 @@ export default function App() {
             ))}
             <div style={styles.statBadge}>Surface mur : {surfaceMur.toFixed(2)} pi²</div>
             <div style={styles.statBadge}>Surface gypse : {surfaceGypse.toFixed(2)} pi²</div>
-          </div>
-
-          <div style={{ marginBottom: 16, border: "1px solid #e2e8f0",
-                        borderRadius: 8, padding: 16, background: "#fff" }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#1e3a8a", marginBottom: 12 }}>
-              Informations du projet
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#475569",
-                              marginBottom: 8, textTransform: "uppercase",
-                              letterSpacing: 0.5 }}>Client</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <div>
-                    <label style={styles.formLabel}>Nom du projet</label>
-                    <input style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
-                      value={projetVal("nom")}
-                      onChange={(e) => updateProjetField("nom", e.target.value)} />
-                  </div>
-                  <div>
-                    <label style={styles.formLabel}>Nom du client</label>
-                    <input style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
-                      value={projetVal("nom_client")}
-                      onChange={(e) => updateProjetField("nom_client", e.target.value)} />
-                  </div>
-                  <div>
-                    <label style={styles.formLabel}>Nom du contact</label>
-                    <input style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
-                      value={projetVal("contact_client")}
-                      onChange={(e) => updateProjetField("contact_client", e.target.value)} />
-                  </div>
-                  <div>
-                    <label style={styles.formLabel}>Courriel</label>
-                    <input type="email" style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
-                      value={projetVal("email_client")}
-                      onChange={(e) => updateProjetField("email_client", e.target.value)} />
-                  </div>
-                  <div>
-                    <label style={styles.formLabel}>Téléphone</label>
-                    <input type="tel" style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
-                      value={projetVal("telephone_client")}
-                      onChange={(e) => updateProjetField("telephone_client", e.target.value)} />
-                  </div>
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#475569",
-                              marginBottom: 8, textTransform: "uppercase",
-                              letterSpacing: 0.5 }}>Entrepreneur</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <div>
-                    <label style={styles.formLabel}>Numéro du projet</label>
-                    <input style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
-                      value={projetVal("numero_projet")}
-                      onChange={(e) => updateProjetField("numero_projet", e.target.value)} />
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                    <div>
-                      <label style={styles.formLabel}>Date début</label>
-                      <input type="date" style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
-                        value={projetVal("date_debut")}
-                        onChange={(e) => updateProjetField("date_debut", e.target.value)} />
-                    </div>
-                    <div>
-                      <label style={styles.formLabel}>Date fin</label>
-                      <input type="date" style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
-                        value={projetVal("date_fin")}
-                        onChange={(e) => updateProjetField("date_fin", e.target.value)} />
-                    </div>
-                  </div>
-                  <div>
-                    <label style={styles.formLabel}>Contact entrepreneur</label>
-                    <input style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
-                      value={projetVal("contact_entrepreneur")}
-                      onChange={(e) => updateProjetField("contact_entrepreneur", e.target.value)} />
-                  </div>
-                  <div>
-                    <label style={styles.formLabel}>Courriel</label>
-                    <input type="email" style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
-                      value={projetVal("email_entrepreneur")}
-                      onChange={(e) => updateProjetField("email_entrepreneur", e.target.value)} />
-                  </div>
-                  <div>
-                    <label style={styles.formLabel}>Téléphone</label>
-                    <input type="tel" style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
-                      value={projetVal("telephone_entrepreneur")}
-                      onChange={(e) => updateProjetField("telephone_entrepreneur", e.target.value)} />
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
 
           <div style={{ marginBottom: 16 }}>
@@ -1267,6 +1196,123 @@ export default function App() {
             </div>
           )}
         </div>
+        {showInfoModal && (
+          <div style={{
+            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(15,23,42,0.5)", display: "flex",
+            alignItems: "center", justifyContent: "center", zIndex: 1000,
+          }} onClick={() => !infoSaving && setShowInfoModal(false)}>
+            <div onClick={(e) => e.stopPropagation()}
+              style={{
+                background: "#fff", borderRadius: 12, padding: 24,
+                width: 720, maxWidth: "92vw", maxHeight: "85vh",
+                overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+              }}>
+              <h2 style={{ margin: "0 0 16px", color: "#1e3a8a", fontSize: 18 }}>
+                ✏️ Modifier les informations du projet
+              </h2>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 16 }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#475569",
+                                marginBottom: 10, textTransform: "uppercase",
+                                letterSpacing: 0.5 }}>Client</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div>
+                      <label style={styles.formLabel}>Nom du projet</label>
+                      <input style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                        value={infoEdits.nom ?? ""}
+                        onChange={(e) => setInfoField("nom", e.target.value)} />
+                    </div>
+                    <div>
+                      <label style={styles.formLabel}>Nom du client</label>
+                      <input style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                        value={infoEdits.nom_client ?? ""}
+                        onChange={(e) => setInfoField("nom_client", e.target.value)} />
+                    </div>
+                    <div>
+                      <label style={styles.formLabel}>Nom du contact</label>
+                      <input style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                        value={infoEdits.contact_client ?? ""}
+                        onChange={(e) => setInfoField("contact_client", e.target.value)} />
+                    </div>
+                    <div>
+                      <label style={styles.formLabel}>Courriel</label>
+                      <input type="email" style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                        value={infoEdits.email_client ?? ""}
+                        onChange={(e) => setInfoField("email_client", e.target.value)} />
+                    </div>
+                    <div>
+                      <label style={styles.formLabel}>Téléphone</label>
+                      <input type="tel" style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                        value={infoEdits.telephone_client ?? ""}
+                        onChange={(e) => setInfoField("telephone_client", e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#475569",
+                                marginBottom: 10, textTransform: "uppercase",
+                                letterSpacing: 0.5 }}>Entrepreneur</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div>
+                      <label style={styles.formLabel}>Numéro du projet</label>
+                      <input style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                        value={infoEdits.numero_projet ?? ""}
+                        onChange={(e) => setInfoField("numero_projet", e.target.value)} />
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                      <div>
+                        <label style={styles.formLabel}>Date début</label>
+                        <input type="date" style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                          value={infoEdits.date_debut ?? ""}
+                          onChange={(e) => setInfoField("date_debut", e.target.value)} />
+                      </div>
+                      <div>
+                        <label style={styles.formLabel}>Date fin</label>
+                        <input type="date" style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                          value={infoEdits.date_fin ?? ""}
+                          onChange={(e) => setInfoField("date_fin", e.target.value)} />
+                      </div>
+                    </div>
+                    <div>
+                      <label style={styles.formLabel}>Contact entrepreneur</label>
+                      <input style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                        value={infoEdits.contact_entrepreneur ?? ""}
+                        onChange={(e) => setInfoField("contact_entrepreneur", e.target.value)} />
+                    </div>
+                    <div>
+                      <label style={styles.formLabel}>Courriel</label>
+                      <input type="email" style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                        value={infoEdits.email_entrepreneur ?? ""}
+                        onChange={(e) => setInfoField("email_entrepreneur", e.target.value)} />
+                    </div>
+                    <div>
+                      <label style={styles.formLabel}>Téléphone</label>
+                      <input type="tel" style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                        value={infoEdits.telephone_entrepreneur ?? ""}
+                        onChange={(e) => setInfoField("telephone_entrepreneur", e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center" }}>
+                {infoSaving && (
+                  <span style={{ fontSize: 12, color: "#64748b", fontStyle: "italic", marginRight: 8 }}>
+                    Sauvegarde…
+                  </span>
+                )}
+                <button onClick={() => setShowInfoModal(false)} disabled={infoSaving}
+                  style={{ ...styles.btnSecondary, opacity: infoSaving ? 0.5 : 1 }}>
+                  Annuler
+                </button>
+                <button onClick={saveInfoModal} disabled={infoSaving}
+                  style={{ ...styles.btnPrimary, opacity: infoSaving ? 0.6 : 1 }}>
+                  Enregistrer
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {showPdfModal && (
           <div style={{
             position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
