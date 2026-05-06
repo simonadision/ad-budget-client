@@ -369,6 +369,7 @@ export default function App() {
     sections: new Set(), colonnes: new Set(),
     sousTotaux: new Set(), adminProfits: new Set(),
     avecSousTotalAvantTaxes: true, avecTps: true, avecTvq: true,
+    orientation: "portrait",
   });
   const [adminItems, setAdminItems] = useState([]);
   const [adminEdits, setAdminEdits] = useState({});
@@ -682,6 +683,7 @@ export default function App() {
       avecSousTotalAvantTaxes: totalsVisibility.sousTotalAvantTaxes !== false,
       avecTps: totalsVisibility.tps !== false,
       avecTvq: totalsVisibility.tvq !== false,
+      orientation: "portrait",
     });
     setShowPdfModal(true);
   }
@@ -736,6 +738,7 @@ export default function App() {
     params.set("avec_sous_total_avant_taxes", String(pdfFilters.avecSousTotalAvantTaxes));
     params.set("avec_tps", String(pdfFilters.avecTps));
     params.set("avec_tvq", String(pdfFilters.avecTvq));
+    params.set("orientation", pdfFilters.orientation);
     const allSectionsSelected = pdfFilters.sections.size === uniqueSections.length;
     if (!allSectionsSelected && pdfFilters.sections.size > 0) {
       params.set("sections", [...pdfFilters.sections].join(","));
@@ -1845,6 +1848,26 @@ export default function App() {
                   onChange={(e) => setPdfFilters((p) => ({ ...p, avecTvq: e.target.checked }))} />
                 Inclure la TVQ ({(TVQ_RATE * 100).toFixed(3).replace(/\.?0+$/, "")}%) — affecte le TOTAL GÉNÉRAL
               </label>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#1e3a8a",
+                            marginBottom: 6, marginTop: 4 }}>
+                Orientation
+              </div>
+              <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 6,
+                                fontSize: 13, cursor: "pointer" }}>
+                  <input type="radio" name="pdf-orientation" value="portrait"
+                    checked={pdfFilters.orientation === "portrait"}
+                    onChange={() => setPdfFilters((p) => ({ ...p, orientation: "portrait" }))} />
+                  Portrait
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 6,
+                                fontSize: 13, cursor: "pointer" }}>
+                  <input type="radio" name="pdf-orientation" value="paysage"
+                    checked={pdfFilters.orientation === "paysage"}
+                    onChange={() => setPdfFilters((p) => ({ ...p, orientation: "paysage" }))} />
+                  Paysage
+                </label>
+              </div>
               <div style={{ fontSize: 13, fontWeight: 600, color: "#1e3a8a",
                             marginBottom: 6, marginTop: 4 }}>
                 Colonnes ({pdfFilters.colonnes.size} / {PDF_COLUMNS.length})
