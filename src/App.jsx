@@ -78,7 +78,7 @@ const AUTOSAVE_DELAY = 3000;
 
 const styles = {
   app: {
-    fontFamily: "'Segoe UI', system-ui, sans-serif",
+    fontFamily: "\"Helvetica Neue\", Helvetica, Arial, sans-serif",
     background: "#f5f6fa",
     minHeight: "100vh",
     color: "#1a1a2e",
@@ -91,7 +91,7 @@ const styles = {
     background: "#fff", borderRadius: 16, padding: "40px 48px",
     boxShadow: "0 20px 60px rgba(0,0,0,0.2)", width: 380, textAlign: "center",
   },
-  loginLogo: { fontSize: 32, fontWeight: 800, color: "#1e3a8a", marginBottom: 8 },
+  loginLogo: { fontSize: 32, fontWeight: 700, color: "#1e3a8a", marginBottom: 8, letterSpacing: "-0.5px" },
   loginSubtitle: { color: "#64748b", fontSize: 14, marginBottom: 32 },
   loginLabel: {
     display: "block", textAlign: "left", fontSize: 12, fontWeight: 600,
@@ -110,7 +110,7 @@ const styles = {
     background: "#1e3a8a", padding: "0 24px", display: "flex",
     alignItems: "center", justifyContent: "space-between", height: 52,
   },
-  navLogo: { color: "#fff", fontWeight: 800, fontSize: 18 },
+  navLogo: { color: "#fff", fontWeight: 700, fontSize: 18, letterSpacing: "-0.5px" },
   navUser: { color: "#93c5fd", fontSize: 13, display: "flex", alignItems: "center", gap: 12 },
   navLogout: {
     background: "transparent", border: "1px solid #3b82f6", color: "#93c5fd",
@@ -172,12 +172,12 @@ const styles = {
     borderRadius: 5, fontSize: 12, fontWeight: 600, cursor: "pointer",
   },
   btnAddRow: {
-    padding: "4px 8px", background: "#f0fdf4", color: "#16a34a",
-    border: "1px solid #86efac", borderRadius: 5, fontSize: 11, fontWeight: 600,
+    padding: "4px 8px", background: "#ecfdf5", color: "#10b981",
+    border: "1px solid #6ee7b7", borderRadius: 5, fontSize: 11, fontWeight: 600,
     cursor: "pointer", whiteSpace: "nowrap", marginRight: 4,
   },
   btnToggleActive: {
-    padding: "4px 8px", background: "#16a34a", color: "#fff", border: "none",
+    padding: "4px 8px", background: "#10b981", color: "#fff", border: "none",
     borderRadius: 5, fontSize: 13, fontWeight: 700, cursor: "pointer", minWidth: 34,
   },
   btnToggleInactive: {
@@ -280,7 +280,7 @@ function groupByPrefix(items) {
 
 function statutColor(statut) {
   if (statut === "en cours") return { background: "#dbeafe", color: "#1d4ed8" };
-  if (statut === "complété") return { background: "#dcfce7", color: "#16a34a" };
+  if (statut === "complété") return { background: "#d1fae5", color: "#10b981" };
   return { background: "#f1f5f9", color: "#64748b" };
 }
 
@@ -1291,7 +1291,7 @@ export default function App() {
               {autosaveStatus && (
                 <span style={{
                   ...styles.autosaveStatus,
-                  color: autosaveStatus.includes("✓") ? "#16a34a"
+                  color: autosaveStatus.includes("✓") ? "#10b981"
                     : autosaveStatus.includes("✗") ? "#ef4444" : "#64748b",
                 }}>
                   {autosaveStatus}
@@ -1520,7 +1520,7 @@ export default function App() {
                                            fontWeight: 600 }}>
                               <input type="checkbox" checked={vis.sousTotal}
                                 onChange={() => toggleTotalSousTotal(g.key)}
-                                style={{ accentColor: "#16a34a", cursor: "pointer" }}
+                                style={{ accentColor: "#10b981", cursor: "pointer" }}
                                 title="Afficher / masquer ce sous-total et son admin & profit" />
                               Sous-total {g.label}
                             </span>
@@ -1537,7 +1537,7 @@ export default function App() {
                                 checked={vis.sousTotal && vis.adminProfit}
                                 disabled={!vis.sousTotal}
                                 onChange={() => toggleTotalAdminProfit(g.key)}
-                                style={{ accentColor: "#16a34a",
+                                style={{ accentColor: "#10b981",
                                          cursor: vis.sousTotal ? "pointer" : "not-allowed" }}
                                 title={vis.sousTotal ? "Afficher / masquer cet admin & profit"
                                                      : "Cocher d'abord le sous-total"} />
@@ -1858,7 +1858,7 @@ export default function App() {
               {autosaveStatus && (
                 <span style={{
                   ...styles.autosaveStatus,
-                  color: autosaveStatus.includes("✓") ? "#16a34a"
+                  color: autosaveStatus.includes("✓") ? "#10b981"
                     : autosaveStatus.includes("✗") ? "#ef4444" : "#64748b",
                 }}>{autosaveStatus}</span>
               )}

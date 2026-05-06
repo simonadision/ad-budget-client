@@ -7,7 +7,8 @@
 body {
   margin: 0;
   padding: 0;
-  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-family: var(--ad-font-family);
+  color: var(--ad-text);
 }
 
 #root {
