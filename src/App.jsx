@@ -7,6 +7,7 @@ import {
   redirectToLogin,
   redirectToLogout,
 } from "./auth.js";
+import ModuleSwitcher from "./ModuleSwitcher.jsx";
 
 const API_URL = "https://web-production-3381d.up.railway.app";
 
@@ -1106,18 +1107,7 @@ export default function App() {
 
   const Nav = () => (
     <nav style={styles.nav}>
-      <div style={styles.navLogo}>
-        <svg width="26" height="26" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          {/* 4 branches en croix flottant directement sur le navy du header.
-              Branches top+right en bleu CLAIR (les originales #1e3a8a seraient
-              invisibles sur le navy), bottom rouge, left vert. */}
-          <rect x="27" y="6"  width="10" height="21" fill="#60a5fa" />
-          <rect x="37" y="27" width="21" height="10" fill="#60a5fa" />
-          <rect x="27" y="37" width="10" height="21" fill="#ef4444" />
-          <rect x="6"  y="27" width="21" height="10" fill="#10b981" />
-        </svg>
-        <span>Ad BUD</span>
-      </div>
+      <ModuleSwitcher modules={user?.modules || []} currentModule="ad_bud" />
       <div style={styles.navUser}>
         <span>👤 {user?.nom || user?.email}</span>
         {user?.role === "admin" && page !== "admin" && (
