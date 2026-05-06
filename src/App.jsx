@@ -462,7 +462,7 @@ export default function App() {
       const lignesRes = await fetch(`${API_URL}/budget/projets/${projet.id}/lignes`);
       const lignesData = await lignesRes.json();
       setLignes(lignesData);
-      setActiveItems(new Set(lignesData.map((l) => l.id)));
+      setActiveItems(new Set(lignesData.filter((l) => l.actif !== false).map((l) => l.id)));
     } catch {
       alert("Erreur lors du chargement.");
     } finally {
@@ -891,8 +891,37 @@ export default function App() {
     setActiveItems((prev) => { const next = new Set(prev); next.delete(id); return next; });
   }
 
-  function toggleActive(id) {
-    setActiveItems((prev) => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
+  async function toggleActive(id) {
+    if (!projetActif) return;
+    const wasActive = activeItems.has(id);
+    const newActif = !wasActive;
+    // Optimistic UI update
+    setActiveItems((prev) => {
+      const next = new Set(prev);
+      newActif ? next.add(id) : next.delete(id);
+      return next;
+    });
+    try {
+      const res = await fetch(
+        `${API_URL}/budget/projets/${projetActif.id}/lignes/${id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ actif: newActif }),
+        },
+      );
+      if (!res.ok) throw new Error();
+      setLignes((prev) => prev.map((l) => (l.id === id ? { ...l, actif: newActif } : l)));
+    } catch {
+      // Rollback
+      setActiveItems((prev) => {
+        const next = new Set(prev);
+        wasActive ? next.add(id) : next.delete(id);
+        return next;
+      });
+      setAutosaveStatus("erreur ✗");
+      setTimeout(() => setAutosaveStatus(""), 2000);
+    }
   }
 
   // ── Derived ───────────────────────────────────────────────────────────────
