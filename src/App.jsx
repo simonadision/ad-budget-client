@@ -934,7 +934,7 @@ export default function App() {
           <h1 style={styles.pageTitle}>Nouveau projet</h1>
           <div style={styles.card}>
             <div style={styles.cardBody}>
-              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+              <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: 16 }}>
                 <LogoUpload value={nouveauProjet.logo_base64}
                   setter={(v) => setNouveauProjet((p) => ({ ...p, logo_base64: v }))} />
               </div>
@@ -1298,7 +1298,7 @@ export default function App() {
               <h2 style={{ margin: "0 0 16px", color: "#1e3a8a", fontSize: 18 }}>
                 ✏️ Modifier les informations du projet
               </h2>
-              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+              <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: 16 }}>
                 <LogoUpload value={infoEdits.logo_base64 ?? ""}
                   setter={(v) => setInfoField("logo_base64", v)} />
               </div>
