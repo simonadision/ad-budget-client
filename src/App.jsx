@@ -243,6 +243,8 @@ export default function App() {
   const autosaveTimers = useRef({});
   const [notes, setNotes] = useState("");
   const notesTimer = useRef(null);
+  const [projetEdits, setProjetEdits] = useState({});
+  const projetTimers = useRef({});
   const [loading, setLoading] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginNom, setLoginNom] = useState("");
@@ -360,6 +362,9 @@ export default function App() {
   async function ouvrirProjet(projet) {
     setProjetActif(projet);
     setNotes(projet.notes ?? "");
+    setProjetEdits({});
+    Object.values(projetTimers.current).forEach((t) => clearTimeout(t));
+    projetTimers.current = {};
     setLoading(true);
     setEdits({});
     setActiveItems(new Set());
@@ -439,6 +444,37 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notes: value }),
       });
+      setAutosaveStatus("sauvegardé ✓");
+      setTimeout(() => setAutosaveStatus(""), 2000);
+    } catch {
+      setAutosaveStatus("erreur ✗");
+    }
+  }
+
+  function projetVal(field, fallback = "") {
+    if (field in projetEdits) return projetEdits[field];
+    const v = projetActif?.[field];
+    return v == null ? fallback : v;
+  }
+
+  function updateProjetField(field, value) {
+    setProjetEdits((prev) => ({ ...prev, [field]: value }));
+    if (projetTimers.current[field]) clearTimeout(projetTimers.current[field]);
+    setAutosaveStatus("en attente de sauvegarde…");
+    projetTimers.current[field] = setTimeout(() => saveProjetField(field, value), AUTOSAVE_DELAY);
+  }
+
+  async function saveProjetField(field, value) {
+    if (!projetActif) return;
+    try {
+      const res = await fetch(`${API_URL}/budget/projets/${projetActif.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: value }),
+      });
+      if (!res.ok) throw new Error();
+      setProjetActif((prev) => (prev ? { ...prev, [field]: value } : prev));
+      setProjetEdits((prev) => { const next = { ...prev }; delete next[field]; return next; });
       setAutosaveStatus("sauvegardé ✓");
       setTimeout(() => setAutosaveStatus(""), 2000);
     } catch {
@@ -906,6 +942,97 @@ export default function App() {
             ))}
             <div style={styles.statBadge}>Surface mur : {surfaceMur.toFixed(2)} pi²</div>
             <div style={styles.statBadge}>Surface gypse : {surfaceGypse.toFixed(2)} pi²</div>
+          </div>
+
+          <div style={{ marginBottom: 16, border: "1px solid #e2e8f0",
+                        borderRadius: 8, padding: 16, background: "#fff" }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#1e3a8a", marginBottom: 12 }}>
+              Informations du projet
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#475569",
+                              marginBottom: 8, textTransform: "uppercase",
+                              letterSpacing: 0.5 }}>Client</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div>
+                    <label style={styles.formLabel}>Nom du projet</label>
+                    <input style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                      value={projetVal("nom")}
+                      onChange={(e) => updateProjetField("nom", e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={styles.formLabel}>Nom du client</label>
+                    <input style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                      value={projetVal("nom_client")}
+                      onChange={(e) => updateProjetField("nom_client", e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={styles.formLabel}>Nom du contact</label>
+                    <input style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                      value={projetVal("contact_client")}
+                      onChange={(e) => updateProjetField("contact_client", e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={styles.formLabel}>Courriel</label>
+                    <input type="email" style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                      value={projetVal("email_client")}
+                      onChange={(e) => updateProjetField("email_client", e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={styles.formLabel}>Téléphone</label>
+                    <input type="tel" style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                      value={projetVal("telephone_client")}
+                      onChange={(e) => updateProjetField("telephone_client", e.target.value)} />
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#475569",
+                              marginBottom: 8, textTransform: "uppercase",
+                              letterSpacing: 0.5 }}>Entrepreneur</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div>
+                    <label style={styles.formLabel}>Numéro du projet</label>
+                    <input style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                      value={projetVal("numero_projet")}
+                      onChange={(e) => updateProjetField("numero_projet", e.target.value)} />
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <div>
+                      <label style={styles.formLabel}>Date début</label>
+                      <input type="date" style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                        value={projetVal("date_debut")}
+                        onChange={(e) => updateProjetField("date_debut", e.target.value)} />
+                    </div>
+                    <div>
+                      <label style={styles.formLabel}>Date fin</label>
+                      <input type="date" style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                        value={projetVal("date_fin")}
+                        onChange={(e) => updateProjetField("date_fin", e.target.value)} />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={styles.formLabel}>Contact entrepreneur</label>
+                    <input style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                      value={projetVal("contact_entrepreneur")}
+                      onChange={(e) => updateProjetField("contact_entrepreneur", e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={styles.formLabel}>Courriel</label>
+                    <input type="email" style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                      value={projetVal("email_entrepreneur")}
+                      onChange={(e) => updateProjetField("email_entrepreneur", e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={styles.formLabel}>Téléphone</label>
+                    <input type="tel" style={{ ...styles.formInput, width: "100%", boxSizing: "border-box" }}
+                      value={projetVal("telephone_entrepreneur")}
+                      onChange={(e) => updateProjetField("telephone_entrepreneur", e.target.value)} />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div style={{ marginBottom: 16 }}>
