@@ -109,30 +109,13 @@ const styles = {
     minHeight: "100vh",
     color: "#0f172a",
   },
+  // loginPage est encore utilisé comme arrière-plan de l'écran de chargement
+  // SSO (avant que /auth/me ait répondu). Les anciens styles loginCard /
+  // loginLogo / etc. ont été retirés avec le composant Login local.
   loginPage: {
     display: "flex", alignItems: "center", justifyContent: "center",
     minHeight: "100vh", background: "linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)",
   },
-  loginCard: {
-    background: "#fff", borderRadius: 16, padding: "40px 48px",
-    boxShadow: "0 20px 60px rgba(0,0,0,0.2)", width: 380, textAlign: "center",
-  },
-  loginLogo: { fontSize: 32, fontWeight: 700, color: "#1e3a8a", marginBottom: 8, letterSpacing: "-0.5px" },
-  loginSubtitle: { color: "#64748b", fontSize: 14, marginBottom: 32 },
-  loginLabel: {
-    display: "block", textAlign: "left", fontSize: 12, fontWeight: 600,
-    color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6,
-  },
-  loginInput: {
-    width: "100%", padding: "10px 14px", border: "1px solid #dbe3f0",
-    borderRadius: 8, fontSize: 14, marginBottom: 16, boxSizing: "border-box",
-    background: "#ffffff", outline: "none",
-  },
-  loginBtn: {
-    width: "100%", padding: "12px", background: "#2563eb", color: "#fff",
-    border: "none", borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: "pointer", marginTop: 8,
-  },
-  loginError: { color: "#ef4444", fontSize: 13, marginTop: 8 },
   nav: {
     background: "#1e3a8a", padding: "0 28px", display: "flex",
     alignItems: "center", justifyContent: "space-between", height: 56,
