@@ -74,6 +74,10 @@ const SURFACE_GYPSE_TERMS = ["plâtrage", "platrage", "peinture", "papier peint"
 
 const AUTOSAVE_DELAY = 3000;
 
+// Taxes Québec — taux fixes hardcodés
+const TPS_RATE = 0.05;
+const TVQ_RATE = 0.09975;
+
 // ─── Styles ────────────────────────────────────────────────────────────────
 
 const styles = {
@@ -315,9 +319,12 @@ export default function App() {
   const [pctEdits, setPctEdits] = useState({});
   const pctTimers = useRef({});
   const [totalsVisibility, setTotalsVisibility] = useState(() => {
-    const defaults = Object.fromEntries(
-      BUDGET_GROUPS.map((g) => [g.key, { sousTotal: true, adminProfit: true }])
-    );
+    const defaults = {
+      ...Object.fromEntries(BUDGET_GROUPS.map((g) => [g.key, { sousTotal: true, adminProfit: true }])),
+      sousTotalAvantTaxes: true,
+      tps: true,
+      tvq: true,
+    };
     try {
       const stored = localStorage.getItem("ad_bud_totaux_visibles");
       if (stored) {
@@ -325,6 +332,9 @@ export default function App() {
         const merged = { ...defaults };
         for (const g of BUDGET_GROUPS) {
           if (parsed[g.key]) merged[g.key] = { ...defaults[g.key], ...parsed[g.key] };
+        }
+        for (const k of ["sousTotalAvantTaxes", "tps", "tvq"]) {
+          if (typeof parsed[k] === "boolean") merged[k] = parsed[k];
         }
         return merged;
       }
@@ -358,6 +368,7 @@ export default function App() {
     inactifs: false, avecPrix: true, avecParametres: true,
     sections: new Set(), colonnes: new Set(),
     sousTotaux: new Set(), adminProfits: new Set(),
+    avecSousTotalAvantTaxes: true, avecTps: true, avecTvq: true,
   });
   const [adminItems, setAdminItems] = useState([]);
   const [adminEdits, setAdminEdits] = useState({});
@@ -601,6 +612,10 @@ export default function App() {
     });
   }
 
+  function toggleTotalsFlag(key) {
+    setTotalsVisibility((prev) => ({ ...prev, [key]: prev[key] === false ? true : false }));
+  }
+
   const INFO_FIELDS = [
     "nom",
     "nom_client", "contact_client", "email_client", "telephone_client",
@@ -664,6 +679,9 @@ export default function App() {
       colonnes: new Set(PDF_COLUMNS.map((c) => c.key)),
       sousTotaux: sousTotauxInit,
       adminProfits: adminProfitsInit,
+      avecSousTotalAvantTaxes: totalsVisibility.sousTotalAvantTaxes !== false,
+      avecTps: totalsVisibility.tps !== false,
+      avecTvq: totalsVisibility.tvq !== false,
     });
     setShowPdfModal(true);
   }
@@ -715,6 +733,9 @@ export default function App() {
     params.set("actifs_seulement", String(!pdfFilters.inactifs));
     params.set("avec_prix", String(pdfFilters.avecPrix));
     params.set("avec_parametres", String(pdfFilters.avecParametres));
+    params.set("avec_sous_total_avant_taxes", String(pdfFilters.avecSousTotalAvantTaxes));
+    params.set("avec_tps", String(pdfFilters.avecTps));
+    params.set("avec_tvq", String(pdfFilters.avecTvq));
     const allSectionsSelected = pdfFilters.sections.size === uniqueSections.length;
     if (!allSectionsSelected && pdfFilters.sections.size > 0) {
       params.set("sections", [...pdfFilters.sections].join(","));
@@ -958,7 +979,7 @@ export default function App() {
     return result;
   }, [budgetLignes]);
 
-  const totalGeneral = useMemo(() => {
+  const sousTotalAvantTaxes = useMemo(() => {
     let t = grandTotal;
     for (const g of groupTotals) {
       const raw = (g.pctField in pctEdits) ? pctEdits[g.pctField] : (projetActif?.[g.pctField] ?? 0);
@@ -967,6 +988,16 @@ export default function App() {
     }
     return t;
   }, [grandTotal, groupTotals, pctEdits, projetActif]);
+
+  const tpsAmount = sousTotalAvantTaxes * TPS_RATE;
+  const tvqAmount = sousTotalAvantTaxes * TVQ_RATE;
+
+  const totalGeneral = useMemo(() => {
+    let t = sousTotalAvantTaxes;
+    if (totalsVisibility.tps !== false) t += tpsAmount;
+    if (totalsVisibility.tvq !== false) t += tvqAmount;
+    return t;
+  }, [sousTotalAvantTaxes, tpsAmount, tvqAmount, totalsVisibility]);
 
   // Multiplicateur d'affichage par regroupement : si admin & profit décoché et
   // sous-total coché, le total des lignes du regroupement est gonflé pour afficher
@@ -1581,6 +1612,52 @@ export default function App() {
                         </div>
                       );
                     })}
+                    {/* Sous-total avant taxes — visuel uniquement */}
+                    <div style={{ display: "flex", justifyContent: "space-between",
+                                  alignItems: "center", padding: "8px 0 4px",
+                                  borderTop: "1px solid #e2e8f0", marginTop: 4,
+                                  fontSize: 13 }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 600 }}>
+                        <input type="checkbox" checked={totalsVisibility.sousTotalAvantTaxes !== false}
+                          onChange={() => toggleTotalsFlag("sousTotalAvantTaxes")}
+                          style={{ accentColor: "#10b981", cursor: "pointer", width: 16, height: 16 }}
+                          title="Afficher / masquer la ligne Sous-total avant taxes" />
+                        Sous-total avant taxes
+                      </span>
+                      <span style={{ fontWeight: 600, color: "#1e3a8a" }}>
+                        {totalsVisibility.sousTotalAvantTaxes !== false
+                          ? `${sousTotalAvantTaxes.toFixed(2)} $`
+                          : "—"}
+                      </span>
+                    </div>
+                    {/* TPS — case affecte le total */}
+                    <div style={{ display: "flex", justifyContent: "space-between",
+                                  alignItems: "center", padding: "4px 0", fontSize: 13 }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <input type="checkbox" checked={totalsVisibility.tps !== false}
+                          onChange={() => toggleTotalsFlag("tps")}
+                          style={{ accentColor: "#10b981", cursor: "pointer", width: 16, height: 16 }}
+                          title="Inclure la TPS dans le TOTAL GÉNÉRAL" />
+                        TPS {(TPS_RATE * 100).toFixed(0)}%
+                      </span>
+                      <span style={{ color: "#475569" }}>
+                        {totalsVisibility.tps !== false ? `${tpsAmount.toFixed(2)} $` : "—"}
+                      </span>
+                    </div>
+                    {/* TVQ — case affecte le total */}
+                    <div style={{ display: "flex", justifyContent: "space-between",
+                                  alignItems: "center", padding: "4px 0 8px", fontSize: 13 }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <input type="checkbox" checked={totalsVisibility.tvq !== false}
+                          onChange={() => toggleTotalsFlag("tvq")}
+                          style={{ accentColor: "#10b981", cursor: "pointer", width: 16, height: 16 }}
+                          title="Inclure la TVQ dans le TOTAL GÉNÉRAL" />
+                        TVQ {(TVQ_RATE * 100).toFixed(3).replace(/\.?0+$/, "")}%
+                      </span>
+                      <span style={{ color: "#475569" }}>
+                        {totalsVisibility.tvq !== false ? `${tvqAmount.toFixed(2)} $` : "—"}
+                      </span>
+                    </div>
                   </div>
                   <div style={{
                     display: "flex", justifyContent: "space-between",
@@ -1745,10 +1822,28 @@ export default function App() {
                 Inclure les prix (sinon mode sous-traitant : sans prix ni notes)
               </label>
               <label style={{ display: "flex", alignItems: "center", gap: 8,
-                              marginBottom: 14, fontSize: 13, cursor: "pointer" }}>
+                              marginBottom: 10, fontSize: 13, cursor: "pointer" }}>
                 <input type="checkbox" checked={pdfFilters.avecParametres}
                   onChange={(e) => setPdfFilters((p) => ({ ...p, avecParametres: e.target.checked }))} />
                 Inclure les paramètres du projet
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 8,
+                              marginBottom: 10, fontSize: 13, cursor: "pointer" }}>
+                <input type="checkbox" checked={pdfFilters.avecSousTotalAvantTaxes}
+                  onChange={(e) => setPdfFilters((p) => ({ ...p, avecSousTotalAvantTaxes: e.target.checked }))} />
+                Inclure la ligne « Sous-total avant taxes »
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 8,
+                              marginBottom: 10, fontSize: 13, cursor: "pointer" }}>
+                <input type="checkbox" checked={pdfFilters.avecTps}
+                  onChange={(e) => setPdfFilters((p) => ({ ...p, avecTps: e.target.checked }))} />
+                Inclure la TPS ({(TPS_RATE * 100).toFixed(0)}%) — affecte le TOTAL GÉNÉRAL
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 8,
+                              marginBottom: 14, fontSize: 13, cursor: "pointer" }}>
+                <input type="checkbox" checked={pdfFilters.avecTvq}
+                  onChange={(e) => setPdfFilters((p) => ({ ...p, avecTvq: e.target.checked }))} />
+                Inclure la TVQ ({(TVQ_RATE * 100).toFixed(3).replace(/\.?0+$/, "")}%) — affecte le TOTAL GÉNÉRAL
               </label>
               <div style={{ fontSize: 13, fontWeight: 600, color: "#1e3a8a",
                             marginBottom: 6, marginTop: 4 }}>
