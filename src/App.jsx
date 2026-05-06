@@ -45,6 +45,20 @@ async function processLogoFile(file) {
   return out;
 }
 
+const BUDGET_COLUMNS = [
+  { key: "actif",       label: "Actif",         defaultWidth: 44,  minWidth: 60 },
+  { key: "section",     label: "Section",       defaultWidth: 100, minWidth: 60 },
+  { key: "description", label: "Description",   defaultWidth: 200, minWidth: 100 },
+  { key: "qte",         label: "Qté",           defaultWidth: 80,  minWidth: 60 },
+  { key: "unite",       label: "Unité",         defaultWidth: 100, minWidth: 60 },
+  { key: "prix",        label: "Prix unitaire", defaultWidth: 105, minWidth: 60 },
+  { key: "soustotal",   label: "Sous-total",    defaultWidth: 100, minWidth: 60 },
+  { key: "ajustement",  label: "Ajust. %",      defaultWidth: 85,  minWidth: 60 },
+  { key: "total",       label: "Total",         defaultWidth: 100, minWidth: 60 },
+  { key: "note",        label: "Note",          defaultWidth: 200, minWidth: 100 },
+  { key: "actions",     label: "Actions",       defaultWidth: 120, minWidth: 60 },
+];
+
 const BUDGET_GROUPS = [
   { key: "conditions", label: "Conditions générales", pctField: "pct_admin_conditions",
     matches: (n) => n === 1 },
@@ -318,6 +332,41 @@ export default function App() {
   const notesTimer = useRef(null);
   const [pctEdits, setPctEdits] = useState({});
   const pctTimers = useRef({});
+  const [colWidths, setColWidths] = useState(() => {
+    const defaults = Object.fromEntries(BUDGET_COLUMNS.map((c) => [c.key, c.defaultWidth]));
+    try {
+      const stored = localStorage.getItem("ad_bud_col_widths");
+      if (stored) return { ...defaults, ...JSON.parse(stored) };
+    } catch {}
+    return defaults;
+  });
+  useEffect(() => {
+    try { localStorage.setItem("ad_bud_col_widths", JSON.stringify(colWidths)); } catch {}
+  }, [colWidths]);
+
+  function startColResize(e, key) {
+    e.preventDefault();
+    e.stopPropagation();
+    const colSpec = BUDGET_COLUMNS.find((c) => c.key === key);
+    const minW = colSpec?.minWidth ?? 60;
+    const startX = e.clientX;
+    const startW = colWidths[key];
+    const onMove = (ev) => {
+      const newW = Math.max(minW, startW + (ev.clientX - startX));
+      setColWidths((prev) => ({ ...prev, [key]: newW }));
+    };
+    const onUp = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }
+
   const [totalsVisibility, setTotalsVisibility] = useState(() => {
     const defaults = {
       ...Object.fromEntries(BUDGET_GROUPS.map((g) => [g.key, { sousTotal: true, adminProfit: true }])),
@@ -1422,12 +1471,27 @@ export default function App() {
               ) : (
                 <>
                   <div style={{ overflowX: "auto" }}>
-                    <table style={{ ...styles.table, width: "100%" }}>
+                    <table style={{
+                      ...styles.table,
+                      width: BUDGET_COLUMNS.reduce((s, c) => s + (colWidths[c.key] || c.defaultWidth), 0),
+                      tableLayout: "fixed",
+                    }}>
                       <thead>
                         <tr>
-                          {["Actif", "Section", "Description", "Qté", "Unité",
-                            "Prix unitaire", "Sous-total", "Ajust. %", "Total", "Note", "Actions"].map((col, i) => (
-                            <th key={i} style={styles.th}>{col}</th>
+                          {BUDGET_COLUMNS.map((col) => (
+                            <th key={col.key} style={{
+                              ...styles.th,
+                              width: colWidths[col.key],
+                              position: "relative",
+                            }}>
+                              {col.label}
+                              <div onMouseDown={(e) => startColResize(e, col.key)}
+                                style={{
+                                  position: "absolute", top: 0, right: 0, height: "100%",
+                                  width: 6, cursor: "col-resize", userSelect: "none",
+                                  zIndex: 1,
+                                }} />
+                            </th>
                           ))}
                         </tr>
                       </thead>
@@ -1466,7 +1530,7 @@ export default function App() {
                                     outline: isSaving ? "1px solid #93c5fd" : "none",
                                   }}>
                                     {/* Toggle actif */}
-                                    <td style={{ ...styles.td, width: 44, textAlign: "center" }}>
+                                    <td style={{ ...styles.td, width: colWidths.actif, textAlign: "center" }}>
                                       <button onClick={() => toggleActive(ligne.id)}
                                         style={isActive ? styles.btnToggleActive : styles.btnToggleInactive}
                                         title={isActive ? "Actif — cliquer pour désactiver" : "Inactif — cliquer pour activer"}>
@@ -1474,19 +1538,19 @@ export default function App() {
                                       </button>
                                     </td>
                                     {/* Section */}
-                                    <td style={{ ...styles.td, width: 100 }}>
+                                    <td style={{ ...styles.td, width: colWidths.section }}>
                                       <input value={edit.section ?? ligne.section ?? ""}
                                         onChange={(e) => updateEdit(ligne.id, "section", e.target.value)}
                                         style={styles.input} />
                                     </td>
                                     {/* Description */}
-                                    <td style={{ ...styles.td, minWidth: 200 }}>
+                                    <td style={{ ...styles.td, width: colWidths.description }}>
                                       <input value={edit.description ?? ligne.description ?? ""}
                                         onChange={(e) => updateEdit(ligne.id, "description", e.target.value)}
                                         style={styles.input} />
                                     </td>
                                     {/* Qté */}
-                                    <td style={{ ...styles.td, width: 80 }}>
+                                    <td style={{ ...styles.td, width: colWidths.qte }}>
                                       <input type="text" inputMode="decimal"
                                         value={getQteDisplay(ligne)}
                                         disabled={row.isAutoQte}
@@ -1494,7 +1558,7 @@ export default function App() {
                                         style={row.isAutoQte ? styles.inputDisabled : styles.input} />
                                     </td>
                                     {/* Unité */}
-                                    <td style={{ ...styles.td, width: 100 }}>
+                                    <td style={{ ...styles.td, width: colWidths.unite }}>
                                       <select value={edit.unite ?? ligne.unite ?? "global"}
                                         onChange={(e) => updateEdit(ligne.id, "unite", e.target.value)}
                                         style={styles.select}>
@@ -1502,18 +1566,18 @@ export default function App() {
                                       </select>
                                     </td>
                                     {/* Prix unitaire */}
-                                    <td style={{ ...styles.td, width: 105 }}>
+                                    <td style={{ ...styles.td, width: colWidths.prix }}>
                                       <input type="text" inputMode="decimal"
                                         value={edit.prixUnitaire ?? Number(ligne.prix_unitaire || 0).toFixed(2)}
                                         onChange={(e) => updateEdit(ligne.id, "prixUnitaire", e.target.value)}
                                         style={styles.input} />
                                     </td>
                                     {/* Sous-total */}
-                                    <td style={{ ...styles.td, width: 100, color: "#475569" }}>
+                                    <td style={{ ...styles.td, width: colWidths.soustotal, color: "#475569" }}>
                                       {row.sousTotal.toFixed(2)} $
                                     </td>
                                     {/* Ajustement */}
-                                    <td style={{ ...styles.td, width: 85 }}>
+                                    <td style={{ ...styles.td, width: colWidths.ajustement }}>
                                       <input type="text" inputMode="decimal"
                                         value={edit.ajustementPct ?? String(ligne.ajustement_pct ?? "")}
                                         onChange={(e) => updateEdit(ligne.id, "ajustementPct", e.target.value)}
@@ -1525,21 +1589,21 @@ export default function App() {
                                       data-group={lineGroupKey || "none"}
                                       data-inflated={totalIsInflated ? "yes" : "no"}
                                       style={totalIsInflated
-                                        ? { ...styles.td, width: 100, background: "#fef3c7", cursor: "not-allowed" }
-                                        : { ...styles.td, width: 100 }}
+                                        ? { ...styles.td, width: colWidths.total, background: "#fef3c7", cursor: "not-allowed" }
+                                        : { ...styles.td, width: colWidths.total }}
                                       title={totalIsInflated
                                         ? "Inclut une part d'administration et profit, décocher pour éditer"
                                         : undefined}>
                                       <strong style={styles.amountStrong}>{displayedTotal.toFixed(2)} $</strong>
                                     </td>
                                     {/* Note */}
-                                    <td style={{ ...styles.td, minWidth: 150 }}>
+                                    <td style={{ ...styles.td, width: colWidths.note }}>
                                       <input value={edit.note ?? ligne.note ?? ""}
                                         onChange={(e) => updateEdit(ligne.id, "note", e.target.value)}
                                         style={styles.input} placeholder="Note..." />
                                     </td>
                                     {/* Actions */}
-                                    <td style={{ ...styles.td, width: 120, whiteSpace: "nowrap" }}>
+                                    <td style={{ ...styles.td, width: colWidths.actions, whiteSpace: "nowrap" }}>
                                       <button className="adision-btn-add-line" style={styles.btnAddRow} onClick={() => ajouterLigneApres(ligne)}>
                                         + Ligne
                                       </button>
