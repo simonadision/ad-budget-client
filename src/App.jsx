@@ -55,18 +55,30 @@ async function processLogoFile(file) {
 }
 
 const BUDGET_COLUMNS = [
-  { key: "actif",       label: "Actif",         defaultWidth: 44,  minWidth: 60 },
-  { key: "section",     label: "Section",       defaultWidth: 100, minWidth: 60 },
-  { key: "description", label: "Description",   defaultWidth: 200, minWidth: 100 },
-  { key: "qte",         label: "Qté",           defaultWidth: 80,  minWidth: 60 },
-  { key: "unite",       label: "Unité",         defaultWidth: 100, minWidth: 60 },
-  { key: "prix",        label: "Prix unitaire", defaultWidth: 105, minWidth: 60 },
-  { key: "soustotal",   label: "Sous-total",    defaultWidth: 100, minWidth: 60 },
-  { key: "ajustement",  label: "Ajust. %",      defaultWidth: 85,  minWidth: 60 },
-  { key: "total",       label: "Total",         defaultWidth: 100, minWidth: 60 },
-  { key: "note",        label: "Note",          defaultWidth: 200, minWidth: 100 },
-  { key: "actions",     label: "Actions",       defaultWidth: 120, minWidth: 60 },
+  { key: "actif",            label: "Actif",         defaultWidth: 44,  minWidth: 60 },
+  { key: "section",          label: "Section",       defaultWidth: 100, minWidth: 60 },
+  { key: "description",      label: "Description",   defaultWidth: 200, minWidth: 100 },
+  { key: "qte",              label: "Qté",           defaultWidth: 80,  minWidth: 60 },
+  { key: "unite",            label: "Unité",         defaultWidth: 100, minWidth: 60 },
+  // prix_unitaire renommé "Coût matériel" dans le header — la BD garde
+  // le nom de colonne prix_unitaire pour ne rien casser côté backend/exports.
+  { key: "prix",             label: "Coût matériel", defaultWidth: 110, minWidth: 60 },
+  { key: "heures",           label: "Heures",        defaultWidth: 70,  minWidth: 50 },
+  { key: "tauxHoraire",      label: "Taux $",        defaultWidth: 75,  minWidth: 50 },
+  // S/T M-O = heures × taux, lecture seule (calcul cascadé côté frontend).
+  { key: "stMo",             label: "S/T M-O",       defaultWidth: 100, minWidth: 70 },
+  { key: "coutSousTraitant", label: "S/T $",         defaultWidth: 90,  minWidth: 60 },
+  { key: "sousTraitant",     label: "Sous-traitant", defaultWidth: 160, minWidth: 100 },
+  { key: "soustotal",        label: "Sous-total",    defaultWidth: 100, minWidth: 60 },
+  { key: "ajustement",       label: "Ajust. %",      defaultWidth: 85,  minWidth: 60 },
+  { key: "total",            label: "Total",         defaultWidth: 100, minWidth: 60 },
+  { key: "note",             label: "Note",          defaultWidth: 200, minWidth: 100 },
+  { key: "actions",          label: "Actions",       defaultWidth: 120, minWidth: 60 },
 ];
+
+// colSpan utilisé par les rangées de regroupement (header de section). Le
+// total du groupe occupe la dernière colonne — d'où -1.
+const BUDGET_GROUP_COLSPAN = BUDGET_COLUMNS.length - 1;
 
 const BUDGET_GROUPS = [
   { key: "conditions", label: "Conditions générales", pctField: "pct_admin_conditions",
@@ -84,7 +96,11 @@ const PDF_COLUMNS = [
   { key: "description", label: "Description" },
   { key: "qte", label: "Qté" },
   { key: "unite", label: "Unité" },
-  { key: "prix_unitaire", label: "Prix unitaire" },
+  { key: "prix_unitaire", label: "Coût matériel" },
+  { key: "heures", label: "Heures" },
+  { key: "taux_horaire", label: "Taux $" },
+  { key: "cout_sous_traitant", label: "S/T $" },
+  { key: "sous_traitant_nom", label: "Sous-traitant" },
   { key: "sous_total", label: "Sous-total" },
   { key: "ajustement_pct", label: "Ajust. %" },
   { key: "total", label: "Total" },
@@ -424,6 +440,11 @@ export default function App() {
   const [adminEdits, setAdminEdits] = useState({});
   const adminTimers = useRef({});
 
+  // Autocomplete sous-traitant : liste DISTINCT chargée à l'ouverture d'un projet
+  // (cf. ouvrirProjet). `subOpenId` = id de la ligne dont le dropdown est visible.
+  const [sousTraitantSuggestions, setSousTraitantSuggestions] = useState([]);
+  const [subOpenId, setSubOpenId] = useState(null);
+
   const surfaceMur = useMemo(() => {
     return normalizeNumber(globalParams.hauteurCloisons) * normalizeNumber(globalParams.longueurCloisons);
   }, [globalParams.hauteurCloisons, globalParams.longueurCloisons]);
@@ -556,6 +577,16 @@ export default function App() {
       const lignesData = await lignesRes.json();
       setLignes(lignesData);
       setActiveItems(new Set(lignesData.filter((l) => l.actif !== false).map((l) => l.id)));
+      // Précharge la liste des sous-traitants déjà saisis (autocomplétion).
+      // Échec silencieux : l'autocomplete ne fonctionnera juste pas, l'user
+      // peut toujours taper un nouveau nom.
+      try {
+        const subRes = await authFetch(`${API_URL}/budget/sous-traitants/suggestions`);
+        if (subRes.ok) {
+          const subs = await subRes.json();
+          setSousTraitantSuggestions(Array.isArray(subs) ? subs : []);
+        }
+      } catch { /* ignore */ }
     } catch {
       alert("Erreur lors du chargement.");
     } finally {
@@ -586,10 +617,20 @@ export default function App() {
 
     const prixUnitaire = normalizeNumber(edit.prixUnitaire ?? ligne.prix_unitaire ?? 0);
     const ajustementPct = normalizeNumber(edit.ajustementPct ?? ligne.ajustement_pct ?? 0);
-    const sousTotal = qte * prixUnitaire;
+    // Ventilation tri-axiale : matériel + main-d'œuvre + sous-traitant.
+    const heures = normalizeNumber(edit.heures ?? ligne.heures ?? 0);
+    const tauxHoraire = normalizeNumber(edit.tauxHoraire ?? ligne.taux_horaire ?? 0);
+    const coutSousTraitant = normalizeNumber(edit.coutSousTraitant ?? ligne.cout_sous_traitant ?? 0);
+    const sousTraitantNom = edit.sousTraitantNom ?? ligne.sous_traitant_nom ?? "";
+    const stMo = heures * tauxHoraire;
+    const sousTotal = qte * prixUnitaire + stMo + coutSousTraitant;
     const total = sousTotal * (1 + ajustementPct / 100);
 
-    return { ...ligne, section, description, unite, qte, prixUnitaire, ajustementPct, sousTotal, total, isAutoQte };
+    return {
+      ...ligne, section, description, unite, qte, prixUnitaire, ajustementPct,
+      heures, tauxHoraire, coutSousTraitant, sousTraitantNom, stMo,
+      sousTotal, total, isAutoQte,
+    };
   }
 
   function getQteDisplay(ligne) {
@@ -604,7 +645,8 @@ export default function App() {
   }
 
   function updateEdit(id, field, value) {
-    const cleanedValue = ["qte", "prixUnitaire", "ajustementPct"].includes(field)
+    const cleanedValue = ["qte", "prixUnitaire", "ajustementPct",
+                          "heures", "tauxHoraire", "coutSousTraitant"].includes(field)
       ? String(value).replace(",", ".") : value;
     setEdits((prev) => ({ ...prev, [id]: { ...prev[id], [field]: cleanedValue } }));
     if (autosaveTimers.current[id]) clearTimeout(autosaveTimers.current[id]);
@@ -959,6 +1001,10 @@ export default function App() {
           qte,
           ajustement_pct: normalizeNumber(edit.ajustementPct ?? ligne.ajustement_pct ?? 0),
           note: edit.note ?? ligne.note ?? "",
+          heures: normalizeNumber(edit.heures ?? ligne.heures ?? 0),
+          taux_horaire: normalizeNumber(edit.tauxHoraire ?? ligne.taux_horaire ?? 0),
+          cout_sous_traitant: normalizeNumber(edit.coutSousTraitant ?? ligne.cout_sous_traitant ?? 0),
+          sous_traitant_nom: edit.sousTraitantNom ?? ligne.sous_traitant_nom ?? "",
         }),
       });
       setAutosaveStatus("sauvegardé ✓");
@@ -1043,6 +1089,20 @@ export default function App() {
 
   const grandTotal = budgetLignes.reduce((sum, l) => sum + l.total, 0);
   const lignesByPrefix = useMemo(() => groupByPrefix(lignes), [lignes]);
+
+  // Ventilation tri-axiale pour la soumission. Calculée uniquement sur les
+  // lignes actives avec qte > 0 — même filtre que budgetLignes — pour rester
+  // cohérent avec le total général affiché. Pré-ajustement (pas de × adj),
+  // pour que la somme matériel + M-O + S/T reflète les saisies brutes.
+  const breakdownTotals = useMemo(() => {
+    let materiel = 0, mo = 0, st = 0;
+    for (const l of budgetLignes) {
+      materiel += (l.qte || 0) * (l.prixUnitaire || 0);
+      mo += l.stMo || 0;
+      st += l.coutSousTraitant || 0;
+    }
+    return { materiel, mo, st };
+  }, [budgetLignes]);
 
   const groupTotals = useMemo(() => {
     const result = BUDGET_GROUPS.map((g) => ({ ...g, subtotal: 0 }));
@@ -1500,7 +1560,7 @@ export default function App() {
                 <p style={styles.emptyMsg}>Aucun item dans ce projet.</p>
               ) : (
                 <>
-                  <div style={{ overflowX: "auto" }}>
+                  <div style={{ overflowX: "auto", maxHeight: "70vh", overflowY: "auto" }}>
                     <table style={{
                       ...styles.table,
                       width: BUDGET_COLUMNS.reduce((s, c) => s + (colWidths[c.key] || c.defaultWidth), 0),
@@ -1512,7 +1572,9 @@ export default function App() {
                             <th key={col.key} style={{
                               ...styles.th,
                               width: colWidths[col.key],
-                              position: "relative",
+                              position: "sticky",
+                              top: 0,
+                              zIndex: 10,
                             }}>
                               {col.label}
                               <div onMouseDown={(e) => startColResize(e, col.key)}
@@ -1535,7 +1597,7 @@ export default function App() {
                           return (
                             <React.Fragment key={`budget-${prefix}`}>
                               <tr style={styles.trGroup} onClick={() => toggleCollapsedBudget(prefix)}>
-                                <td colSpan={10} style={styles.tdGroup}>
+                                <td colSpan={BUDGET_GROUP_COLSPAN} style={styles.tdGroup}>
                                   {isCollapsed ? "▶" : "▼"}&nbsp;&nbsp;{getPrefixLabel(prefix)}
                                   <span style={{ fontWeight: 400, marginLeft: 10, opacity: 0.8 }}>
                                     ({groupLignes.length} élément{groupLignes.length > 1 ? "s" : ""})
@@ -1595,12 +1657,87 @@ export default function App() {
                                         {allowedUnites.map((u) => <option key={u} value={u}>{u}</option>)}
                                       </select>
                                     </td>
-                                    {/* Prix unitaire */}
+                                    {/* Coût matériel (anciennement "Prix unitaire") */}
                                     <td style={{ ...styles.td, width: colWidths.prix }}>
                                       <input type="text" inputMode="decimal"
                                         value={edit.prixUnitaire ?? Number(ligne.prix_unitaire || 0).toFixed(2)}
                                         onChange={(e) => updateEdit(ligne.id, "prixUnitaire", e.target.value)}
                                         style={styles.input} />
+                                    </td>
+                                    {/* Heures */}
+                                    <td style={{ ...styles.td, width: colWidths.heures }}>
+                                      <input type="text" inputMode="decimal"
+                                        value={edit.heures ?? (ligne.heures != null ? String(parseFloat(ligne.heures) || 0) : "0")}
+                                        onChange={(e) => updateEdit(ligne.id, "heures", e.target.value)}
+                                        style={styles.input} />
+                                    </td>
+                                    {/* Taux $ */}
+                                    <td style={{ ...styles.td, width: colWidths.tauxHoraire }}>
+                                      <input type="text" inputMode="decimal"
+                                        value={edit.tauxHoraire ?? (ligne.taux_horaire != null ? String(parseFloat(ligne.taux_horaire) || 0) : "0")}
+                                        onChange={(e) => updateEdit(ligne.id, "tauxHoraire", e.target.value)}
+                                        style={styles.input} />
+                                    </td>
+                                    {/* S/T M-O — calculé auto, lecture seule */}
+                                    <td style={{ ...styles.td, width: colWidths.stMo, color: "#475569" }}>
+                                      {row.stMo.toLocaleString("fr-CA",
+                                        { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $
+                                    </td>
+                                    {/* Sous-traitant $ */}
+                                    <td style={{ ...styles.td, width: colWidths.coutSousTraitant }}>
+                                      <input type="text" inputMode="decimal"
+                                        value={edit.coutSousTraitant ?? (ligne.cout_sous_traitant != null ? String(parseFloat(ligne.cout_sous_traitant) || 0) : "0")}
+                                        onChange={(e) => updateEdit(ligne.id, "coutSousTraitant", e.target.value)}
+                                        style={styles.input} />
+                                    </td>
+                                    {/* Sous-traitant nom — autocomplete */}
+                                    <td style={{ ...styles.td, width: colWidths.sousTraitant, position: "relative" }}>
+                                      {(() => {
+                                        const currentVal = edit.sousTraitantNom ?? ligne.sous_traitant_nom ?? "";
+                                        const isOpen = subOpenId === ligne.id;
+                                        const filtered = isOpen
+                                          ? sousTraitantSuggestions.filter((s) =>
+                                              s && s.toLowerCase().includes(currentVal.toLowerCase()) && s !== currentVal)
+                                          : [];
+                                        return (
+                                          <>
+                                            <input
+                                              value={currentVal}
+                                              onChange={(e) => updateEdit(ligne.id, "sousTraitantNom", e.target.value)}
+                                              onFocus={() => setSubOpenId(ligne.id)}
+                                              onBlur={() => setTimeout(() => {
+                                                setSubOpenId((cur) => (cur === ligne.id ? null : cur));
+                                              }, 150)}
+                                              style={styles.input}
+                                              placeholder="ex: ABC Plomberie" />
+                                            {isOpen && filtered.length > 0 && (
+                                              <div style={{
+                                                position: "absolute", top: "100%", left: 0, right: 0,
+                                                background: "#fff", border: "1px solid #cbd5e1",
+                                                borderRadius: 6, boxShadow: "0 4px 12px rgba(15,23,42,0.12)",
+                                                maxHeight: 180, overflowY: "auto", zIndex: 50,
+                                              }}>
+                                                {filtered.slice(0, 10).map((s) => (
+                                                  <div key={s}
+                                                    onMouseDown={(e) => {
+                                                      e.preventDefault();
+                                                      updateEdit(ligne.id, "sousTraitantNom", s);
+                                                      setSubOpenId(null);
+                                                    }}
+                                                    style={{
+                                                      padding: "6px 10px", fontSize: 13,
+                                                      cursor: "pointer", color: "#0f172a",
+                                                    }}
+                                                    onMouseEnter={(e) => { e.currentTarget.style.background = "#eff6ff"; }}
+                                                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
+                                                    {s}
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            )}
+                                          </>
+                                        );
+                                      })()}
                                     </td>
                                     {/* Sous-total */}
                                     <td style={{ ...styles.td, width: colWidths.soustotal, color: "#475569" }}>
@@ -1754,6 +1891,29 @@ export default function App() {
                       <span style={{ color: "#475569" }}>
                         {totalsVisibility.tvq !== false ? `${tvqAmount.toFixed(2)} $` : "—"}
                       </span>
+                    </div>
+                  </div>
+                  {/* Ventilation matériel / M-O / sous-traitant — utile pour
+                      découper le devis lors d'une soumission. Pré-ajustement
+                      et hors taxes, c'est un breakdown indicatif. */}
+                  <div style={{
+                    background: "#f8fafc", borderTop: "1px solid #e2e8f0",
+                    padding: "12px 24px", fontSize: 13, color: "#475569",
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0" }}>
+                      <span>Dont matériel</span>
+                      <span>{breakdownTotals.materiel.toLocaleString("fr-CA",
+                        { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0" }}>
+                      <span>Dont main-d'œuvre</span>
+                      <span>{breakdownTotals.mo.toLocaleString("fr-CA",
+                        { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0" }}>
+                      <span>Dont sous-traitant</span>
+                      <span>{breakdownTotals.st.toLocaleString("fr-CA",
+                        { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $</span>
                     </div>
                   </div>
                   <div style={{
