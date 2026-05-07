@@ -93,6 +93,23 @@ const BUDGET_COLUMNS = [
 
 const SOUS_TRAITANT_TYPES = ["Budget", "Soumission", "BSDQ", "Allocation"];
 
+// Colonnes obligatoires : pas d'œil 👁 dans leur header (impossible à cacher
+// individuellement). Reste accessible via le menu 👁 Colonnes pour cohérence.
+const REQUIRED_COL_KEYS = new Set(["actif", "description", "total", "actions"]);
+// Style des bordures qui marquent les frontières entre les 3 sections —
+// posé sur le borderLeft de la première colonne d'une nouvelle zone (qu'elle
+// soit une section ou la zone commune après les sections).
+const SECTION_BORDER = "3px solid #475569";
+
+function isSectionBoundary(col, prevCol) {
+  // Frontière dès que le group change. Couvre :
+  //   null → section, section → autre section, section → null.
+  // Avec sections cachées : si la section M-O est masquée, la frontière entre
+  //   matériaux et S-T s'affiche à la jonction Matériaux / S-T (une seule).
+  if (!prevCol) return false;
+  return (col.group ?? null) !== (prevCol.group ?? null);
+}
+
 // Presets pour le toggle de visibilité des colonnes. Toutes les colonnes
 // restent en BD ; on ne fait que masquer/afficher leur cellule.
 const COL_PRESETS = {
@@ -1594,10 +1611,14 @@ export default function App() {
   // dépendances (edits, callbacks, suggestions, colWidths…) sont capturées
   // par closure ; permet de garder le markup tbody compact et la liste de
   // colonnes 100% data-driven (toggle visibilité, ordre, etc.).
-  function renderBudgetCell({ col, ligne, row, edit, isActive }) {
+  function renderBudgetCell({ col, ligne, row, edit, isActive, boundary }) {
     const w = colWidths[col.key] || col.defaultWidth;
     const sectBg = col.group ? BUDGET_SECTIONS[col.group].bgRow : undefined;
-    const tdBase = { ...styles.td, width: w, ...(sectBg ? { background: sectBg } : {}) };
+    const tdBase = {
+      ...styles.td, width: w,
+      ...(sectBg ? { background: sectBg } : {}),
+      ...(boundary ? { borderLeft: SECTION_BORDER } : {}),
+    };
     const numCellStyle = { ...tdBase, color: "#475569", textAlign: "right" };
     switch (col.key) {
       case "actif":
@@ -2015,12 +2036,15 @@ export default function App() {
                               let i = 0;
                               while (i < visibleColumns.length) {
                                 const col = visibleColumns[i];
+                                const prev = i > 0 ? visibleColumns[i - 1] : null;
+                                const boundary = isSectionBoundary(col, prev);
                                 if (col.group === null) {
                                   cells.push(
                                     <th key={`sec-${col.key}`} style={{
                                       ...styles.th, background: "#1e3a8a",
                                       width: colWidths[col.key], position: "sticky", top: 0,
                                       zIndex: 11,
+                                      ...(boundary ? { borderLeft: SECTION_BORDER } : {}),
                                     }} />
                                   );
                                   i += 1;
@@ -2037,6 +2061,7 @@ export default function App() {
                                       background: sect.bg, color: "#0f172a",
                                       textAlign: "center",
                                       position: "sticky", top: 0, zIndex: 11,
+                                      ...(boundary ? { borderLeft: SECTION_BORDER } : {}),
                                     }}>
                                       {sect.label}
                                     </th>
@@ -2049,9 +2074,13 @@ export default function App() {
                           </tr>
                         )}
                         <tr>
-                          {visibleColumns.map((col) => {
+                          {visibleColumns.map((col, idx) => {
                             const sectBg = col.group ? BUDGET_SECTIONS[col.group].bg : undefined;
                             const sectionRowVisible = sectionVisible.materiaux || sectionVisible.mainOeuvre || sectionVisible.sousTraitant;
+                            const prev = idx > 0 ? visibleColumns[idx - 1] : null;
+                            const boundary = isSectionBoundary(col, prev);
+                            const showEye = !REQUIRED_COL_KEYS.has(col.key);
+                            const canResize = col.key !== "actif";
                             return (
                               <th key={col.key} style={{
                                 ...styles.th,
@@ -2059,15 +2088,41 @@ export default function App() {
                                 position: "sticky",
                                 top: sectionRowVisible ? 32 : 0,
                                 zIndex: 10,
+                                paddingRight: showEye ? 24 : undefined,
                                 ...(sectBg ? { background: sectBg, color: "#0f172a" } : {}),
+                                ...(boundary ? { borderLeft: SECTION_BORDER } : {}),
                               }}>
                                 {col.label}
-                                <div onMouseDown={(e) => startColResize(e, col.key)}
-                                  style={{
-                                    position: "absolute", top: 0, right: 0, height: "100%",
-                                    width: 6, cursor: "col-resize", userSelect: "none",
-                                    zIndex: 1,
-                                  }} />
+                                {showEye && (
+                                  <span
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleColVisibility(col.key);
+                                    }}
+                                    title="Cacher cette colonne"
+                                    style={{
+                                      position: "absolute", right: 10, top: "50%",
+                                      transform: "translateY(-50%)",
+                                      cursor: "pointer", fontSize: 12, opacity: 0.55,
+                                      userSelect: "none", padding: "2px 4px",
+                                    }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.55"; }}
+                                  >
+                                    👁
+                                  </span>
+                                )}
+                                {canResize && (
+                                  <div onMouseDown={(e) => startColResize(e, col.key)}
+                                    style={{
+                                      position: "absolute", top: 0, right: 0, height: "100%",
+                                      width: 6, cursor: "col-resize", userSelect: "none",
+                                      zIndex: 2, transition: "background 0.15s",
+                                    }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(148,163,184,0.6)"; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                                    title="Glisser pour redimensionner" />
+                                )}
                               </th>
                             );
                           })}
@@ -2104,8 +2159,9 @@ export default function App() {
                                 };
                                 return (
                                   <tr key={ligne.id} className="adision-budget-row" style={baseRowStyle}>
-                                    {visibleColumns.map((col) => renderBudgetCell({
+                                    {visibleColumns.map((col, idx) => renderBudgetCell({
                                       col, ligne, row, edit, isActive,
+                                      boundary: isSectionBoundary(col, idx > 0 ? visibleColumns[idx - 1] : null),
                                     }))}
                                   </tr>
                                 );
