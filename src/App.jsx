@@ -581,7 +581,9 @@ export default function App() {
     sections: new Set(), colonnes: new Set(),
     sousTotaux: new Set(), adminProfits: new Set(),
     avecSousTotalAvantTaxes: true, avecTps: true, avecTvq: true,
-    orientation: "portrait",
+    // Paysage par défaut : avec la refonte 3 sections (17 colonnes), le
+    // portrait coupe trop. L'user peut toujours basculer en portrait.
+    orientation: "paysage",
   });
   const [adminItems, setAdminItems] = useState([]);
   const [adminEdits, setAdminEdits] = useState({});
@@ -966,7 +968,7 @@ export default function App() {
       avecSousTotalAvantTaxes: totalsVisibility.sousTotalAvantTaxes !== false,
       avecTps: totalsVisibility.tps !== false,
       avecTvq: totalsVisibility.tvq !== false,
-      orientation: "portrait",
+      orientation: "paysage",
     });
     setShowPdfModal(true);
   }
