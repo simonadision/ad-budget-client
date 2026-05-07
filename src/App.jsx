@@ -2134,8 +2134,12 @@ export default function App() {
                                 zIndex: 9,
                                 background: "#f8fafc",
                                 borderBottom: "1px solid #e2e8f0",
-                                padding: "4px 0",
-                                textAlign: "center",
+                                // padding-left identique à styles.th (12px)
+                                // pour aligner l'œil avec le début du libellé
+                                // de la rangée 2 ; right reste 0 pour pas
+                                // décaler quand on redimensionne la colonne.
+                                padding: "4px 0 4px 12px",
+                                textAlign: "left",
                                 fontWeight: "normal",
                                 ...(boundary ? { borderLeft: SECTION_BORDER } : {}),
                               }}>
@@ -2148,7 +2152,9 @@ export default function App() {
                                   style={{
                                     cursor: "pointer", fontSize: 15,
                                     color: "#991b1b", userSelect: "none",
-                                    display: "inline-block", padding: "2px 6px",
+                                    // padding 0 à gauche : le décalage vient
+                                    // exclusivement du padding du <th>.
+                                    display: "inline-block", padding: "2px 6px 2px 0",
                                     lineHeight: 1, opacity: 0.85,
                                   }}
                                   onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
