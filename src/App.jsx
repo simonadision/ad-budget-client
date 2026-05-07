@@ -54,31 +54,72 @@ async function processLogoFile(file) {
   return out;
 }
 
+// Refonte 3 sections : chaque ligne du budget se décompose en matériaux,
+// main-d'œuvre et sous-traitant. Chaque section a ses inputs, son ajustement %
+// et son sous-total calculé. Le total ligne est la somme des 3 sous-totaux.
+const BUDGET_SECTIONS = {
+  materiaux:    { label: "MATÉRIAUX",    bg: "#e3f2fd", bgRow: "#f4faff" },
+  mainOeuvre:   { label: "MAIN-D'ŒUVRE", bg: "#e8f5e9", bgRow: "#f5fbf5" },
+  sousTraitant: { label: "SOUS-TRAITANT", bg: "#fff8e1", bgRow: "#fffdf3" },
+};
+
 const BUDGET_COLUMNS = [
-  { key: "actif",            label: "Actif",         defaultWidth: 44,  minWidth: 60 },
-  { key: "section",          label: "Section",       defaultWidth: 100, minWidth: 60 },
-  { key: "description",      label: "Description",   defaultWidth: 200, minWidth: 100 },
-  { key: "qte",              label: "Qté",           defaultWidth: 80,  minWidth: 60 },
-  { key: "unite",            label: "Unité",         defaultWidth: 100, minWidth: 60 },
-  // prix_unitaire renommé "Coût matériel" dans le header — la BD garde
-  // le nom de colonne prix_unitaire pour ne rien casser côté backend/exports.
-  { key: "prix",             label: "Coût matériel", defaultWidth: 110, minWidth: 60 },
-  { key: "heures",           label: "Heures",        defaultWidth: 70,  minWidth: 50 },
-  { key: "tauxHoraire",      label: "Taux $",        defaultWidth: 75,  minWidth: 50 },
-  // S/T M-O = heures × taux, lecture seule (calcul cascadé côté frontend).
-  { key: "stMo",             label: "S/T M-O",       defaultWidth: 100, minWidth: 70 },
-  { key: "coutSousTraitant", label: "S/T $",         defaultWidth: 90,  minWidth: 60 },
-  { key: "sousTraitant",     label: "Sous-traitant", defaultWidth: 160, minWidth: 100 },
-  { key: "soustotal",        label: "Sous-total",    defaultWidth: 100, minWidth: 60 },
-  { key: "ajustement",       label: "Ajust. %",      defaultWidth: 85,  minWidth: 60 },
-  { key: "total",            label: "Total",         defaultWidth: 100, minWidth: 60 },
-  { key: "note",             label: "Note",          defaultWidth: 200, minWidth: 100 },
-  { key: "actions",          label: "Actions",       defaultWidth: 120, minWidth: 60 },
+  // Colonnes communes (pas de section)
+  { key: "actif",       label: "Actif",       group: null, defaultWidth: 44,  minWidth: 60 },
+  { key: "section",     label: "Section",     group: null, defaultWidth: 90,  minWidth: 60 },
+  { key: "description", label: "Description", group: null, defaultWidth: 200, minWidth: 100 },
+  { key: "qte",         label: "Qté",         group: null, defaultWidth: 70,  minWidth: 50 },
+  { key: "unite",       label: "Unité",       group: null, defaultWidth: 90,  minWidth: 60 },
+  // Section MATÉRIAUX
+  { key: "prix",        label: "Coût unit.",  group: "materiaux",  defaultWidth: 90,  minWidth: 60 },
+  { key: "ajustMat",    label: "Ajust %",     group: "materiaux",  defaultWidth: 70,  minWidth: 50 },
+  { key: "stMat",       label: "S/T mat.",    group: "materiaux",  defaultWidth: 100, minWidth: 70, readOnly: true },
+  // Section MAIN-D'ŒUVRE
+  { key: "heures",      label: "Heures",      group: "mainOeuvre", defaultWidth: 70,  minWidth: 50 },
+  { key: "tauxHoraire", label: "Taux $",      group: "mainOeuvre", defaultWidth: 75,  minWidth: 50 },
+  { key: "ajustMo",     label: "Ajust %",     group: "mainOeuvre", defaultWidth: 70,  minWidth: 50 },
+  { key: "stMo",        label: "S/T M-O",     group: "mainOeuvre", defaultWidth: 100, minWidth: 70, readOnly: true },
+  // Section SOUS-TRAITANT — 5 colonnes (4 spec + nom autocomplete préservé).
+  { key: "stType",      label: "Type",          group: "sousTraitant", defaultWidth: 110, minWidth: 80 },
+  { key: "stNom",       label: "Sous-traitant", group: "sousTraitant", defaultWidth: 150, minWidth: 100 },
+  { key: "stMontant",   label: "Montant",       group: "sousTraitant", defaultWidth: 100, minWidth: 70 },
+  { key: "ajustSt",     label: "Ajust %",       group: "sousTraitant", defaultWidth: 70,  minWidth: 50 },
+  { key: "stSt",        label: "S/T s-tr.",     group: "sousTraitant", defaultWidth: 100, minWidth: 70, readOnly: true },
+  // Colonnes communes (droite)
+  { key: "total",       label: "Total ligne", group: null, defaultWidth: 110, minWidth: 80, readOnly: true },
+  { key: "note",        label: "Note",        group: null, defaultWidth: 180, minWidth: 100 },
+  { key: "actions",     label: "Actions",     group: null, defaultWidth: 100, minWidth: 60 },
 ];
 
-// colSpan utilisé par les rangées de regroupement (header de section). Le
-// total du groupe occupe la dernière colonne — d'où -1.
-const BUDGET_GROUP_COLSPAN = BUDGET_COLUMNS.length - 1;
+const SOUS_TRAITANT_TYPES = ["Budget", "Soumission", "BSDQ", "Allocation"];
+
+// Presets pour le toggle de visibilité des colonnes. Toutes les colonnes
+// restent en BD ; on ne fait que masquer/afficher leur cellule.
+const COL_PRESETS = {
+  complete: {
+    label: "Vue complète",
+    keys: BUDGET_COLUMNS.map((c) => c.key),
+  },
+  materiauxOnly: {
+    label: "Matériaux seulement",
+    keys: ["actif", "section", "description", "qte", "unite",
+           "prix", "ajustMat", "stMat", "total", "note", "actions"],
+  },
+  moOnly: {
+    label: "Main-d'œuvre seulement",
+    keys: ["actif", "section", "description", "qte", "unite",
+           "heures", "tauxHoraire", "ajustMo", "stMo", "total", "note", "actions"],
+  },
+  stOnly: {
+    label: "Sous-traitant seulement",
+    keys: ["actif", "section", "description", "qte", "unite",
+           "stType", "stNom", "stMontant", "ajustSt", "stSt", "total", "note", "actions"],
+  },
+  minimale: {
+    label: "Vue minimale",
+    keys: ["description", "qte", "unite", "total", "note"],
+  },
+};
 
 const BUDGET_GROUPS = [
   { key: "conditions", label: "Conditions générales", pctField: "pct_admin_conditions",
@@ -96,11 +137,15 @@ const PDF_COLUMNS = [
   { key: "description", label: "Description" },
   { key: "qte", label: "Qté" },
   { key: "unite", label: "Unité" },
-  { key: "prix_unitaire", label: "Coût matériel" },
+  { key: "prix_unitaire", label: "Coût u." },
+  { key: "ajust_materiaux", label: "Aj. mat." },
   { key: "heures", label: "Heures" },
   { key: "taux_horaire", label: "Taux $" },
-  { key: "cout_sous_traitant", label: "S/T $" },
+  { key: "ajust_main_oeuvre", label: "Aj. M-O" },
+  { key: "sous_traitant_type", label: "Type S-T" },
   { key: "sous_traitant_nom", label: "Sous-traitant" },
+  { key: "sous_traitant_montant", label: "Mt S-T" },
+  { key: "ajust_sous_traitant", label: "Aj. S-T" },
   { key: "sous_total", label: "Sous-total" },
   { key: "ajustement_pct", label: "Ajust. %" },
   { key: "total", label: "Total" },
@@ -351,17 +396,43 @@ export default function App() {
   const notesTimer = useRef(null);
   const [pctEdits, setPctEdits] = useState({});
   const pctTimers = useRef({});
-  const [colWidths, setColWidths] = useState(() => {
-    const defaults = Object.fromEntries(BUDGET_COLUMNS.map((c) => [c.key, c.defaultWidth]));
-    try {
-      const stored = localStorage.getItem("ad_bud_col_widths");
-      if (stored) return { ...defaults, ...JSON.parse(stored) };
-    } catch {}
-    return defaults;
-  });
+  // Largeurs et visibilité des colonnes — namespacées par user pour que
+  // chaque utilisateur ait sa propre config, persistée entre sessions.
+  // Clés : adbud_col_widths_<userId> et adbud_col_visibility_<userId>.
+  // Tant que user n'est pas chargé (?), on lit/écrit sous "anon" — les
+  // valeurs sont rechargées dans l'effet ci-dessous quand user.id arrive.
+  const colWidthsDefault = useMemo(
+    () => Object.fromEntries(BUDGET_COLUMNS.map((c) => [c.key, c.defaultWidth])),
+    [],
+  );
+  const colVisibilityDefault = useMemo(
+    () => Object.fromEntries(BUDGET_COLUMNS.map((c) => [c.key, true])),
+    [],
+  );
+  const [colWidths, setColWidths] = useState(colWidthsDefault);
+  const [colVisibility, setColVisibility] = useState(colVisibilityDefault);
+  const widthsKey = `adbud_col_widths_${user?.id ?? "anon"}`;
+  const visibilityKey = `adbud_col_visibility_${user?.id ?? "anon"}`;
+
+  // (Re)charge largeurs + visibilité quand l'user change (login).
   useEffect(() => {
-    try { localStorage.setItem("ad_bud_col_widths", JSON.stringify(colWidths)); } catch {}
-  }, [colWidths]);
+    try {
+      const w = localStorage.getItem(widthsKey);
+      setColWidths(w ? { ...colWidthsDefault, ...JSON.parse(w) } : colWidthsDefault);
+    } catch { setColWidths(colWidthsDefault); }
+    try {
+      const v = localStorage.getItem(visibilityKey);
+      setColVisibility(v ? { ...colVisibilityDefault, ...JSON.parse(v) } : colVisibilityDefault);
+    } catch { setColVisibility(colVisibilityDefault); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  useEffect(() => {
+    try { localStorage.setItem(widthsKey, JSON.stringify(colWidths)); } catch {}
+  }, [colWidths, widthsKey]);
+  useEffect(() => {
+    try { localStorage.setItem(visibilityKey, JSON.stringify(colVisibility)); } catch {}
+  }, [colVisibility, visibilityKey]);
 
   function startColResize(e, key) {
     e.preventDefault();
@@ -385,6 +456,35 @@ export default function App() {
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
   }
+
+  function applyColPreset(presetKey) {
+    const preset = COL_PRESETS[presetKey];
+    if (!preset) return;
+    const visible = new Set(preset.keys);
+    setColVisibility(Object.fromEntries(BUDGET_COLUMNS.map((c) => [c.key, visible.has(c.key)])));
+  }
+  function toggleColVisibility(key) {
+    setColVisibility((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+  function resetColWidths() {
+    setColWidths(colWidthsDefault);
+  }
+  // Menu déroulant 👁 Colonnes — ouvert/fermé.
+  const [colsMenuOpen, setColsMenuOpen] = useState(false);
+
+  // Helpers visibilité par section : la rangée header de section MATÉRIAUX/
+  // M-O/S-T disparaît si toutes ses colonnes sont cachées.
+  const visibleColumns = useMemo(
+    () => BUDGET_COLUMNS.filter((c) => colVisibility[c.key]),
+    [colVisibility],
+  );
+  const sectionVisible = useMemo(() => {
+    const out = {};
+    for (const sk of Object.keys(BUDGET_SECTIONS)) {
+      out[sk] = BUDGET_COLUMNS.some((c) => c.group === sk && colVisibility[c.key]);
+    }
+    return out;
+  }, [colVisibility]);
 
   const [totalsVisibility, setTotalsVisibility] = useState(() => {
     const defaults = {
@@ -616,20 +716,40 @@ export default function App() {
       : normalizeNumber(edit.qte ?? ligne.qte ?? 0);
 
     const prixUnitaire = normalizeNumber(edit.prixUnitaire ?? ligne.prix_unitaire ?? 0);
+    // ajustementPct (ancien ajust global) gardé pour rétro-compat ; n'est plus
+    // posé par la nouvelle UI mais reste appliqué si une ligne historique en a.
     const ajustementPct = normalizeNumber(edit.ajustementPct ?? ligne.ajustement_pct ?? 0);
-    // Ventilation tri-axiale : matériel + main-d'œuvre + sous-traitant.
+    // Refonte 3 sections : ajustement % par section + sous-totaux séparés.
+    const ajustMat = normalizeNumber(edit.ajustMat ?? ligne.ajust_materiaux ?? 0);
     const heures = normalizeNumber(edit.heures ?? ligne.heures ?? 0);
     const tauxHoraire = normalizeNumber(edit.tauxHoraire ?? ligne.taux_horaire ?? 0);
-    const coutSousTraitant = normalizeNumber(edit.coutSousTraitant ?? ligne.cout_sous_traitant ?? 0);
-    const sousTraitantNom = edit.sousTraitantNom ?? ligne.sous_traitant_nom ?? "";
-    const stMo = heures * tauxHoraire;
-    const sousTotal = qte * prixUnitaire + stMo + coutSousTraitant;
-    const total = sousTotal * (1 + ajustementPct / 100);
+    const ajustMo = normalizeNumber(edit.ajustMo ?? ligne.ajust_main_oeuvre ?? 0);
+    const stType = edit.stType ?? ligne.sous_traitant_type ?? "";
+    const stNom = edit.stNom ?? ligne.sous_traitant_nom ?? "";
+    // sous_traitant_montant remplace cout_sous_traitant ; on lit l'ancien si
+    // le nouveau est 0 (compat avec une ligne sauvée avant la migration data).
+    const stMontant = normalizeNumber(
+      edit.stMontant ?? ligne.sous_traitant_montant
+        ?? ligne.cout_sous_traitant ?? 0,
+    );
+    const ajustSt = normalizeNumber(edit.ajustSt ?? ligne.ajust_sous_traitant ?? 0);
+    // Formules — M-O et S-T NE sont PAS multipliés par qte (conforme au spec).
+    const stMatVal = qte * prixUnitaire * (1 + ajustMat / 100);
+    const stMoVal = heures * tauxHoraire * (1 + ajustMo / 100);
+    const stStVal = stMontant * (1 + ajustSt / 100);
+    const totalLigne = stMatVal + stMoVal + stStVal;
+    // total = totalLigne avec l'ajustement global historique appliqué (no-op
+    // pour les nouvelles lignes où ajustementPct=0).
+    const total = totalLigne * (1 + ajustementPct / 100);
+    // sousTotal exposé pour rétro-compat — somme des 3 sous-totaux par section.
+    const sousTotal = totalLigne;
 
     return {
       ...ligne, section, description, unite, qte, prixUnitaire, ajustementPct,
-      heures, tauxHoraire, coutSousTraitant, sousTraitantNom, stMo,
-      sousTotal, total, isAutoQte,
+      ajustMat, heures, tauxHoraire, ajustMo,
+      stType, stNom, stMontant, ajustSt,
+      stMatVal, stMoVal, stStVal,
+      sousTotal, total, totalLigne, isAutoQte,
     };
   }
 
@@ -645,8 +765,11 @@ export default function App() {
   }
 
   function updateEdit(id, field, value) {
-    const cleanedValue = ["qte", "prixUnitaire", "ajustementPct",
-                          "heures", "tauxHoraire", "coutSousTraitant"].includes(field)
+    const cleanedValue = [
+      "qte", "prixUnitaire", "ajustementPct",
+      "heures", "tauxHoraire",
+      "ajustMat", "ajustMo", "ajustSt", "stMontant",
+    ].includes(field)
       ? String(value).replace(",", ".") : value;
     setEdits((prev) => ({ ...prev, [id]: { ...prev[id], [field]: cleanedValue } }));
     if (autosaveTimers.current[id]) clearTimeout(autosaveTimers.current[id]);
@@ -1003,8 +1126,14 @@ export default function App() {
           note: edit.note ?? ligne.note ?? "",
           heures: normalizeNumber(edit.heures ?? ligne.heures ?? 0),
           taux_horaire: normalizeNumber(edit.tauxHoraire ?? ligne.taux_horaire ?? 0),
-          cout_sous_traitant: normalizeNumber(edit.coutSousTraitant ?? ligne.cout_sous_traitant ?? 0),
-          sous_traitant_nom: edit.sousTraitantNom ?? ligne.sous_traitant_nom ?? "",
+          // Refonte 3 sections : ajust % par section + S-T type/montant.
+          // sous_traitant_nom conserve sa colonne historique (autocomplete).
+          ajust_materiaux: normalizeNumber(edit.ajustMat ?? ligne.ajust_materiaux ?? 0),
+          ajust_main_oeuvre: normalizeNumber(edit.ajustMo ?? ligne.ajust_main_oeuvre ?? 0),
+          ajust_sous_traitant: normalizeNumber(edit.ajustSt ?? ligne.ajust_sous_traitant ?? 0),
+          sous_traitant_type: (edit.stType ?? ligne.sous_traitant_type ?? "") || null,
+          sous_traitant_montant: normalizeNumber(edit.stMontant ?? ligne.sous_traitant_montant ?? 0),
+          sous_traitant_nom: edit.stNom ?? ligne.sous_traitant_nom ?? "",
         }),
       });
       setAutosaveStatus("sauvegardé ✓");
@@ -1084,24 +1213,26 @@ export default function App() {
     return lignes
       .filter((l) => activeItems.has(l.id))
       .map((l) => getRow(l))
-      .filter((l) => l.qte > 0);
+      // On garde les lignes qui contribuent à au moins une des 3 sections
+      // (matériaux nécessite qte ET prix ; M-O nécessite heures et taux ;
+      // S-T nécessite un montant). Ça permet à une ligne pure sous-traitant
+      // (qte=0) d'apparaître dans le total et le breakdown.
+      .filter((l) => l.stMatVal > 0 || l.stMoVal > 0 || l.stStVal > 0);
   }, [lignes, edits, globalParams, activeItems, surfaceMur, surfaceGypse]);
 
   const grandTotal = budgetLignes.reduce((sum, l) => sum + l.total, 0);
   const lignesByPrefix = useMemo(() => groupByPrefix(lignes), [lignes]);
 
-  // Ventilation tri-axiale pour la soumission. Calculée uniquement sur les
-  // lignes actives avec qte > 0 — même filtre que budgetLignes — pour rester
-  // cohérent avec le total général affiché. Pré-ajustement (pas de × adj),
-  // pour que la somme matériel + M-O + S/T reflète les saisies brutes.
+  // Ventilation 3 sections (post-ajust % par section, pré-taxes). Calculée
+  // sur les lignes actives — cohérent avec le total général affiché.
   const breakdownTotals = useMemo(() => {
-    let materiel = 0, mo = 0, st = 0;
+    let materiaux = 0, mo = 0, st = 0;
     for (const l of budgetLignes) {
-      materiel += (l.qte || 0) * (l.prixUnitaire || 0);
-      mo += l.stMo || 0;
-      st += l.coutSousTraitant || 0;
+      materiaux += l.stMatVal || 0;
+      mo += l.stMoVal || 0;
+      st += l.stStVal || 0;
     }
-    return { materiel, mo, st };
+    return { materiaux, mo, st };
   }, [budgetLignes]);
 
   const groupTotals = useMemo(() => {
@@ -1459,6 +1590,233 @@ export default function App() {
     );
   }
 
+  // Rend une cellule du tableau Budget pour une colonne donnée. Toutes les
+  // dépendances (edits, callbacks, suggestions, colWidths…) sont capturées
+  // par closure ; permet de garder le markup tbody compact et la liste de
+  // colonnes 100% data-driven (toggle visibilité, ordre, etc.).
+  function renderBudgetCell({ col, ligne, row, edit, isActive }) {
+    const w = colWidths[col.key] || col.defaultWidth;
+    const sectBg = col.group ? BUDGET_SECTIONS[col.group].bgRow : undefined;
+    const tdBase = { ...styles.td, width: w, ...(sectBg ? { background: sectBg } : {}) };
+    const numCellStyle = { ...tdBase, color: "#475569", textAlign: "right" };
+    switch (col.key) {
+      case "actif":
+        return (
+          <td key={col.key} style={{ ...tdBase, textAlign: "center" }}>
+            <button onClick={() => toggleActive(ligne.id)}
+              style={isActive ? styles.btnToggleActive : styles.btnToggleInactive}
+              title={isActive ? "Actif — cliquer pour désactiver" : "Inactif — cliquer pour activer"}>
+              {isActive ? "✓" : "✗"}
+            </button>
+          </td>
+        );
+      case "section":
+        return (
+          <td key={col.key} style={tdBase}>
+            <input value={edit.section ?? ligne.section ?? ""}
+              onChange={(e) => updateEdit(ligne.id, "section", e.target.value)}
+              style={styles.input} />
+          </td>
+        );
+      case "description":
+        return (
+          <td key={col.key} style={tdBase}>
+            <input value={edit.description ?? ligne.description ?? ""}
+              onChange={(e) => updateEdit(ligne.id, "description", e.target.value)}
+              style={styles.input} />
+          </td>
+        );
+      case "qte":
+        return (
+          <td key={col.key} style={tdBase}>
+            <input type="text" inputMode="decimal"
+              value={getQteDisplay(ligne)}
+              disabled={row.isAutoQte}
+              onChange={(e) => updateEdit(ligne.id, "qte", e.target.value)}
+              style={row.isAutoQte ? styles.inputDisabled : styles.input} />
+          </td>
+        );
+      case "unite":
+        return (
+          <td key={col.key} style={tdBase}>
+            <select value={edit.unite ?? ligne.unite ?? "global"}
+              onChange={(e) => updateEdit(ligne.id, "unite", e.target.value)}
+              style={styles.select}>
+              {allowedUnites.map((u) => <option key={u} value={u}>{u}</option>)}
+            </select>
+          </td>
+        );
+      case "prix":
+        return (
+          <td key={col.key} style={tdBase}>
+            <input type="text" inputMode="decimal"
+              value={edit.prixUnitaire ?? Number(ligne.prix_unitaire || 0).toFixed(2)}
+              onChange={(e) => updateEdit(ligne.id, "prixUnitaire", e.target.value)}
+              style={styles.input} />
+          </td>
+        );
+      case "ajustMat":
+        return (
+          <td key={col.key} style={tdBase}>
+            <input type="text" inputMode="decimal"
+              value={edit.ajustMat ?? String(parseFloat(ligne.ajust_materiaux ?? 0))}
+              onChange={(e) => updateEdit(ligne.id, "ajustMat", e.target.value)}
+              style={styles.input} />
+          </td>
+        );
+      case "stMat":
+        return (
+          <td key={col.key} style={numCellStyle}>
+            {row.stMatVal.toLocaleString("fr-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $
+          </td>
+        );
+      case "heures":
+        return (
+          <td key={col.key} style={tdBase}>
+            <input type="text" inputMode="decimal"
+              value={edit.heures ?? String(parseFloat(ligne.heures ?? 0))}
+              onChange={(e) => updateEdit(ligne.id, "heures", e.target.value)}
+              style={styles.input} />
+          </td>
+        );
+      case "tauxHoraire":
+        return (
+          <td key={col.key} style={tdBase}>
+            <input type="text" inputMode="decimal"
+              value={edit.tauxHoraire ?? String(parseFloat(ligne.taux_horaire ?? 0))}
+              onChange={(e) => updateEdit(ligne.id, "tauxHoraire", e.target.value)}
+              style={styles.input} />
+          </td>
+        );
+      case "ajustMo":
+        return (
+          <td key={col.key} style={tdBase}>
+            <input type="text" inputMode="decimal"
+              value={edit.ajustMo ?? String(parseFloat(ligne.ajust_main_oeuvre ?? 0))}
+              onChange={(e) => updateEdit(ligne.id, "ajustMo", e.target.value)}
+              style={styles.input} />
+          </td>
+        );
+      case "stMo":
+        return (
+          <td key={col.key} style={numCellStyle}>
+            {row.stMoVal.toLocaleString("fr-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $
+          </td>
+        );
+      case "stType": {
+        // Warning visuel si type vide ET montant > 0 — bordure jaune discrète.
+        const typeVal = edit.stType ?? ligne.sous_traitant_type ?? "";
+        const montantVal = normalizeNumber(edit.stMontant ?? ligne.sous_traitant_montant ?? 0);
+        const warn = !typeVal && montantVal > 0;
+        return (
+          <td key={col.key} style={tdBase}>
+            <select value={typeVal}
+              onChange={(e) => updateEdit(ligne.id, "stType", e.target.value)}
+              style={{ ...styles.select, ...(warn ? { borderColor: "#facc15", borderWidth: 2 } : {}) }}
+              title={warn ? "Montant saisi sans type — sélectionne un type" : undefined}>
+              <option value="">Choisir…</option>
+              {SOUS_TRAITANT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </td>
+        );
+      }
+      case "stNom": {
+        // Autocomplete préservé : focus = liste filtrée, click = applique.
+        const currentVal = edit.stNom ?? ligne.sous_traitant_nom ?? "";
+        const isOpen = subOpenId === ligne.id;
+        const filtered = isOpen
+          ? sousTraitantSuggestions.filter((s) =>
+              s && s.toLowerCase().includes(currentVal.toLowerCase()) && s !== currentVal)
+          : [];
+        return (
+          <td key={col.key} style={{ ...tdBase, position: "relative" }}>
+            <input value={currentVal}
+              onChange={(e) => updateEdit(ligne.id, "stNom", e.target.value)}
+              onFocus={() => setSubOpenId(ligne.id)}
+              onBlur={() => setTimeout(() => {
+                setSubOpenId((cur) => (cur === ligne.id ? null : cur));
+              }, 150)}
+              style={styles.input}
+              placeholder="ex: ABC Plomberie" />
+            {isOpen && filtered.length > 0 && (
+              <div style={{
+                position: "absolute", top: "100%", left: 0, right: 0,
+                background: "#fff", border: "1px solid #cbd5e1",
+                borderRadius: 6, boxShadow: "0 4px 12px rgba(15,23,42,0.12)",
+                maxHeight: 180, overflowY: "auto", zIndex: 50,
+              }}>
+                {filtered.slice(0, 10).map((s) => (
+                  <div key={s}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      updateEdit(ligne.id, "stNom", s);
+                      setSubOpenId(null);
+                    }}
+                    style={{ padding: "6px 10px", fontSize: 13, cursor: "pointer", color: "#0f172a" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "#eff6ff"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
+                    {s}
+                  </div>
+                ))}
+              </div>
+            )}
+          </td>
+        );
+      }
+      case "stMontant":
+        return (
+          <td key={col.key} style={tdBase}>
+            <input type="text" inputMode="decimal"
+              value={edit.stMontant ?? String(parseFloat(ligne.sous_traitant_montant ?? 0))}
+              onChange={(e) => updateEdit(ligne.id, "stMontant", e.target.value)}
+              style={styles.input} />
+          </td>
+        );
+      case "ajustSt":
+        return (
+          <td key={col.key} style={tdBase}>
+            <input type="text" inputMode="decimal"
+              value={edit.ajustSt ?? String(parseFloat(ligne.ajust_sous_traitant ?? 0))}
+              onChange={(e) => updateEdit(ligne.id, "ajustSt", e.target.value)}
+              style={styles.input} />
+          </td>
+        );
+      case "stSt":
+        return (
+          <td key={col.key} style={numCellStyle}>
+            {row.stStVal.toLocaleString("fr-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $
+          </td>
+        );
+      case "total":
+        return (
+          <td key={col.key} style={{ ...tdBase, textAlign: "right" }}>
+            <strong style={styles.amountStrong}>
+              {row.total.toLocaleString("fr-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $
+            </strong>
+          </td>
+        );
+      case "note":
+        return (
+          <td key={col.key} style={tdBase}>
+            <input value={edit.note ?? ligne.note ?? ""}
+              onChange={(e) => updateEdit(ligne.id, "note", e.target.value)}
+              style={styles.input} placeholder="Note..." />
+          </td>
+        );
+      case "actions":
+        return (
+          <td key={col.key} style={{ ...tdBase, whiteSpace: "nowrap" }}>
+            <button className="adision-btn-add-line" style={styles.btnAddRow}
+              onClick={() => ajouterLigneApres(ligne)}>+ Ligne</button>
+            <button className="adision-btn-row-delete" onClick={() => supprimerLigne(ligne.id)}
+              style={styles.btnDelete}>✕</button>
+          </td>
+        );
+      default:
+        return <td key={col.key} style={tdBase} />;
+    }
+  }
+
   if (page === "budget") {
     return (
       <div style={styles.app}>
@@ -1560,31 +1918,159 @@ export default function App() {
                 <p style={styles.emptyMsg}>Aucun item dans ce projet.</p>
               ) : (
                 <>
+                  {/* Bouton 👁 Colonnes : choix des colonnes visibles + presets. */}
+                  <div style={{ position: "relative", display: "flex",
+                                justifyContent: "flex-end", padding: "8px 16px",
+                                borderBottom: "1px solid #e2e8f0", background: "#fff" }}>
+                    <button onClick={() => setColsMenuOpen((v) => !v)}
+                      className="ad-btn-secondary" style={styles.btnSecondary}
+                      title="Choisir les colonnes visibles">
+                      👁 Colonnes ({visibleColumns.length}/{BUDGET_COLUMNS.length})
+                    </button>
+                    {colsMenuOpen && (
+                      <>
+                        <div onClick={() => setColsMenuOpen(false)}
+                          style={{ position: "fixed", inset: 0, zIndex: 49 }} />
+                        <div style={{
+                          position: "absolute", top: "100%", right: 16, marginTop: 4,
+                          background: "#fff", border: "1px solid #cbd5e1",
+                          borderRadius: 8, boxShadow: "0 8px 24px rgba(15,23,42,0.15)",
+                          padding: 12, minWidth: 280, zIndex: 50, maxHeight: "70vh",
+                          overflowY: "auto",
+                        }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: "#1e3a8a",
+                                        textTransform: "uppercase", letterSpacing: 0.5,
+                                        marginBottom: 6 }}>Présets</div>
+                          {Object.entries(COL_PRESETS).map(([k, p]) => (
+                            <button key={k} onClick={() => applyColPreset(k)}
+                              style={{ display: "block", width: "100%", textAlign: "left",
+                                       padding: "5px 8px", fontSize: 13, background: "transparent",
+                                       border: "none", cursor: "pointer", borderRadius: 4 }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = "#eff6ff"; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
+                              {p.label}
+                            </button>
+                          ))}
+                          <div style={{ borderTop: "1px solid #e2e8f0", margin: "8px 0" }} />
+                          <div style={{ fontSize: 11, fontWeight: 700, color: "#1e3a8a",
+                                        textTransform: "uppercase", letterSpacing: 0.5,
+                                        marginBottom: 6 }}>Colonnes</div>
+                          {BUDGET_COLUMNS.filter((c) => c.group === null).map((col) => (
+                            <label key={col.key} style={{ display: "flex", alignItems: "center",
+                                                          gap: 8, padding: "3px 0",
+                                                          fontSize: 13, cursor: "pointer" }}>
+                              <input type="checkbox" checked={!!colVisibility[col.key]}
+                                onChange={() => toggleColVisibility(col.key)}
+                                style={{ accentColor: "#10b981", cursor: "pointer" }} />
+                              {col.label}
+                            </label>
+                          ))}
+                          {Object.entries(BUDGET_SECTIONS).map(([sk, sect]) => (
+                            <div key={sk} style={{ marginTop: 6,
+                                                   borderTop: "1px dashed #e2e8f0", paddingTop: 6 }}>
+                              <div style={{ fontSize: 10, fontWeight: 700, color: "#475569",
+                                            textTransform: "uppercase", letterSpacing: 0.5,
+                                            marginBottom: 4,
+                                            display: "flex", alignItems: "center", gap: 6 }}>
+                                <span style={{ width: 10, height: 10, borderRadius: 2,
+                                               background: sect.bg }} />
+                                {sect.label}
+                              </div>
+                              {BUDGET_COLUMNS.filter((c) => c.group === sk).map((col) => (
+                                <label key={col.key}
+                                  style={{ display: "flex", alignItems: "center",
+                                           gap: 8, padding: "3px 0", fontSize: 13, cursor: "pointer" }}>
+                                  <input type="checkbox" checked={!!colVisibility[col.key]}
+                                    onChange={() => toggleColVisibility(col.key)}
+                                    style={{ accentColor: "#10b981", cursor: "pointer" }} />
+                                  {col.label}
+                                </label>
+                              ))}
+                            </div>
+                          ))}
+                          <div style={{ borderTop: "1px solid #e2e8f0", margin: "8px 0" }} />
+                          <button onClick={resetColWidths}
+                            className="ad-btn-secondary"
+                            style={{ ...styles.btnSecondary, width: "100%", padding: "5px 8px",
+                                     fontSize: 12 }}>
+                            Réinitialiser largeurs
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                   <div style={{ overflowX: "auto", maxHeight: "70vh", overflowY: "auto" }}>
                     <table style={{
                       ...styles.table,
-                      width: BUDGET_COLUMNS.reduce((s, c) => s + (colWidths[c.key] || c.defaultWidth), 0),
+                      width: visibleColumns.reduce((s, c) => s + (colWidths[c.key] || c.defaultWidth), 0),
                       tableLayout: "fixed",
                     }}>
                       <thead>
+                        {/* Rangée 1 : headers de section avec colspan, masquée
+                            si toutes les sections sont cachées. */}
+                        {(sectionVisible.materiaux || sectionVisible.mainOeuvre || sectionVisible.sousTraitant) && (
+                          <tr>
+                            {(() => {
+                              const cells = [];
+                              let i = 0;
+                              while (i < visibleColumns.length) {
+                                const col = visibleColumns[i];
+                                if (col.group === null) {
+                                  cells.push(
+                                    <th key={`sec-${col.key}`} style={{
+                                      ...styles.th, background: "#1e3a8a",
+                                      width: colWidths[col.key], position: "sticky", top: 0,
+                                      zIndex: 11,
+                                    }} />
+                                  );
+                                  i += 1;
+                                } else {
+                                  let span = 1;
+                                  while (i + span < visibleColumns.length
+                                         && visibleColumns[i + span].group === col.group) {
+                                    span += 1;
+                                  }
+                                  const sect = BUDGET_SECTIONS[col.group];
+                                  cells.push(
+                                    <th key={`sec-${col.group}`} colSpan={span} style={{
+                                      ...styles.th,
+                                      background: sect.bg, color: "#0f172a",
+                                      textAlign: "center",
+                                      position: "sticky", top: 0, zIndex: 11,
+                                    }}>
+                                      {sect.label}
+                                    </th>
+                                  );
+                                  i += span;
+                                }
+                              }
+                              return cells;
+                            })()}
+                          </tr>
+                        )}
                         <tr>
-                          {BUDGET_COLUMNS.map((col) => (
-                            <th key={col.key} style={{
-                              ...styles.th,
-                              width: colWidths[col.key],
-                              position: "sticky",
-                              top: 0,
-                              zIndex: 10,
-                            }}>
-                              {col.label}
-                              <div onMouseDown={(e) => startColResize(e, col.key)}
-                                style={{
-                                  position: "absolute", top: 0, right: 0, height: "100%",
-                                  width: 6, cursor: "col-resize", userSelect: "none",
-                                  zIndex: 1,
-                                }} />
-                            </th>
-                          ))}
+                          {visibleColumns.map((col) => {
+                            const sectBg = col.group ? BUDGET_SECTIONS[col.group].bg : undefined;
+                            const sectionRowVisible = sectionVisible.materiaux || sectionVisible.mainOeuvre || sectionVisible.sousTraitant;
+                            return (
+                              <th key={col.key} style={{
+                                ...styles.th,
+                                width: colWidths[col.key],
+                                position: "sticky",
+                                top: sectionRowVisible ? 32 : 0,
+                                zIndex: 10,
+                                ...(sectBg ? { background: sectBg, color: "#0f172a" } : {}),
+                              }}>
+                                {col.label}
+                                <div onMouseDown={(e) => startColResize(e, col.key)}
+                                  style={{
+                                    position: "absolute", top: 0, right: 0, height: "100%",
+                                    width: 6, cursor: "col-resize", userSelect: "none",
+                                    zIndex: 1,
+                                  }} />
+                              </th>
+                            );
+                          })}
                         </tr>
                       </thead>
                       <tbody>
@@ -1597,189 +2083,30 @@ export default function App() {
                           return (
                             <React.Fragment key={`budget-${prefix}`}>
                               <tr style={styles.trGroup} onClick={() => toggleCollapsedBudget(prefix)}>
-                                <td colSpan={BUDGET_GROUP_COLSPAN} style={styles.tdGroup}>
+                                <td colSpan={Math.max(1, visibleColumns.length - 1)} style={styles.tdGroup}>
                                   {isCollapsed ? "▶" : "▼"}&nbsp;&nbsp;{getPrefixLabel(prefix)}
                                   <span style={{ fontWeight: 400, marginLeft: 10, opacity: 0.8 }}>
                                     ({groupLignes.length} élément{groupLignes.length > 1 ? "s" : ""})
                                   </span>
                                 </td>
-                                <td style={styles.tdGroupTotal}>{groupTotal.toFixed(2)} $</td>
+                                {visibleColumns.length > 1 && (
+                                  <td style={styles.tdGroupTotal}>{groupTotal.toFixed(2)} $</td>
+                                )}
                               </tr>
                               {!isCollapsed && groupLignes.map((ligne, idx) => {
                                 const row = getRow(ligne);
                                 const edit = edits[ligne.id] || {};
                                 const isActive = activeItems.has(ligne.id);
                                 const isSaving = saving.has(ligne.id);
-                                const peutSupprimer = true;
-                                const lineGroupKey = getLineGroupKey(ligne.section);
-                                const adminFactor = lineGroupKey ? (groupAdminFactors[lineGroupKey] || 1) : 1;
-                                const displayedTotal = row.total * adminFactor;
-                                const totalIsInflated = adminFactor !== 1;
-
+                                const baseRowStyle = {
+                                  ...(isActive ? (idx % 2 === 0 ? styles.trEven : styles.trOdd) : styles.trInactive),
+                                  outline: isSaving ? "1px solid #93c5fd" : "none",
+                                };
                                 return (
-                                  <tr key={ligne.id} className="adision-budget-row" style={{
-                                    ...(isActive ? (idx % 2 === 0 ? styles.trEven : styles.trOdd) : styles.trInactive),
-                                    outline: isSaving ? "1px solid #93c5fd" : "none",
-                                  }}>
-                                    {/* Toggle actif */}
-                                    <td style={{ ...styles.td, width: colWidths.actif, textAlign: "center" }}>
-                                      <button onClick={() => toggleActive(ligne.id)}
-                                        style={isActive ? styles.btnToggleActive : styles.btnToggleInactive}
-                                        title={isActive ? "Actif — cliquer pour désactiver" : "Inactif — cliquer pour activer"}>
-                                        {isActive ? "✓" : "✗"}
-                                      </button>
-                                    </td>
-                                    {/* Section */}
-                                    <td style={{ ...styles.td, width: colWidths.section }}>
-                                      <input value={edit.section ?? ligne.section ?? ""}
-                                        onChange={(e) => updateEdit(ligne.id, "section", e.target.value)}
-                                        style={styles.input} />
-                                    </td>
-                                    {/* Description */}
-                                    <td style={{ ...styles.td, width: colWidths.description }}>
-                                      <input value={edit.description ?? ligne.description ?? ""}
-                                        onChange={(e) => updateEdit(ligne.id, "description", e.target.value)}
-                                        style={styles.input} />
-                                    </td>
-                                    {/* Qté */}
-                                    <td style={{ ...styles.td, width: colWidths.qte }}>
-                                      <input type="text" inputMode="decimal"
-                                        value={getQteDisplay(ligne)}
-                                        disabled={row.isAutoQte}
-                                        onChange={(e) => updateEdit(ligne.id, "qte", e.target.value)}
-                                        style={row.isAutoQte ? styles.inputDisabled : styles.input} />
-                                    </td>
-                                    {/* Unité */}
-                                    <td style={{ ...styles.td, width: colWidths.unite }}>
-                                      <select value={edit.unite ?? ligne.unite ?? "global"}
-                                        onChange={(e) => updateEdit(ligne.id, "unite", e.target.value)}
-                                        style={styles.select}>
-                                        {allowedUnites.map((u) => <option key={u} value={u}>{u}</option>)}
-                                      </select>
-                                    </td>
-                                    {/* Coût matériel (anciennement "Prix unitaire") */}
-                                    <td style={{ ...styles.td, width: colWidths.prix }}>
-                                      <input type="text" inputMode="decimal"
-                                        value={edit.prixUnitaire ?? Number(ligne.prix_unitaire || 0).toFixed(2)}
-                                        onChange={(e) => updateEdit(ligne.id, "prixUnitaire", e.target.value)}
-                                        style={styles.input} />
-                                    </td>
-                                    {/* Heures */}
-                                    <td style={{ ...styles.td, width: colWidths.heures }}>
-                                      <input type="text" inputMode="decimal"
-                                        value={edit.heures ?? (ligne.heures != null ? String(parseFloat(ligne.heures) || 0) : "0")}
-                                        onChange={(e) => updateEdit(ligne.id, "heures", e.target.value)}
-                                        style={styles.input} />
-                                    </td>
-                                    {/* Taux $ */}
-                                    <td style={{ ...styles.td, width: colWidths.tauxHoraire }}>
-                                      <input type="text" inputMode="decimal"
-                                        value={edit.tauxHoraire ?? (ligne.taux_horaire != null ? String(parseFloat(ligne.taux_horaire) || 0) : "0")}
-                                        onChange={(e) => updateEdit(ligne.id, "tauxHoraire", e.target.value)}
-                                        style={styles.input} />
-                                    </td>
-                                    {/* S/T M-O — calculé auto, lecture seule */}
-                                    <td style={{ ...styles.td, width: colWidths.stMo, color: "#475569" }}>
-                                      {row.stMo.toLocaleString("fr-CA",
-                                        { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $
-                                    </td>
-                                    {/* Sous-traitant $ */}
-                                    <td style={{ ...styles.td, width: colWidths.coutSousTraitant }}>
-                                      <input type="text" inputMode="decimal"
-                                        value={edit.coutSousTraitant ?? (ligne.cout_sous_traitant != null ? String(parseFloat(ligne.cout_sous_traitant) || 0) : "0")}
-                                        onChange={(e) => updateEdit(ligne.id, "coutSousTraitant", e.target.value)}
-                                        style={styles.input} />
-                                    </td>
-                                    {/* Sous-traitant nom — autocomplete */}
-                                    <td style={{ ...styles.td, width: colWidths.sousTraitant, position: "relative" }}>
-                                      {(() => {
-                                        const currentVal = edit.sousTraitantNom ?? ligne.sous_traitant_nom ?? "";
-                                        const isOpen = subOpenId === ligne.id;
-                                        const filtered = isOpen
-                                          ? sousTraitantSuggestions.filter((s) =>
-                                              s && s.toLowerCase().includes(currentVal.toLowerCase()) && s !== currentVal)
-                                          : [];
-                                        return (
-                                          <>
-                                            <input
-                                              value={currentVal}
-                                              onChange={(e) => updateEdit(ligne.id, "sousTraitantNom", e.target.value)}
-                                              onFocus={() => setSubOpenId(ligne.id)}
-                                              onBlur={() => setTimeout(() => {
-                                                setSubOpenId((cur) => (cur === ligne.id ? null : cur));
-                                              }, 150)}
-                                              style={styles.input}
-                                              placeholder="ex: ABC Plomberie" />
-                                            {isOpen && filtered.length > 0 && (
-                                              <div style={{
-                                                position: "absolute", top: "100%", left: 0, right: 0,
-                                                background: "#fff", border: "1px solid #cbd5e1",
-                                                borderRadius: 6, boxShadow: "0 4px 12px rgba(15,23,42,0.12)",
-                                                maxHeight: 180, overflowY: "auto", zIndex: 50,
-                                              }}>
-                                                {filtered.slice(0, 10).map((s) => (
-                                                  <div key={s}
-                                                    onMouseDown={(e) => {
-                                                      e.preventDefault();
-                                                      updateEdit(ligne.id, "sousTraitantNom", s);
-                                                      setSubOpenId(null);
-                                                    }}
-                                                    style={{
-                                                      padding: "6px 10px", fontSize: 13,
-                                                      cursor: "pointer", color: "#0f172a",
-                                                    }}
-                                                    onMouseEnter={(e) => { e.currentTarget.style.background = "#eff6ff"; }}
-                                                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
-                                                    {s}
-                                                  </div>
-                                                ))}
-                                              </div>
-                                            )}
-                                          </>
-                                        );
-                                      })()}
-                                    </td>
-                                    {/* Sous-total */}
-                                    <td style={{ ...styles.td, width: colWidths.soustotal, color: "#475569" }}>
-                                      {row.sousTotal.toFixed(2)} $
-                                    </td>
-                                    {/* Ajustement */}
-                                    <td style={{ ...styles.td, width: colWidths.ajustement }}>
-                                      <input type="text" inputMode="decimal"
-                                        value={edit.ajustementPct ?? String(ligne.ajustement_pct ?? "")}
-                                        onChange={(e) => updateEdit(ligne.id, "ajustementPct", e.target.value)}
-                                        style={styles.input} />
-                                    </td>
-                                    {/* Total */}
-                                    <td
-                                      data-factor={adminFactor}
-                                      data-group={lineGroupKey || "none"}
-                                      data-inflated={totalIsInflated ? "yes" : "no"}
-                                      style={totalIsInflated
-                                        ? { ...styles.td, width: colWidths.total, background: "#fef3c7", cursor: "not-allowed" }
-                                        : { ...styles.td, width: colWidths.total }}
-                                      title={totalIsInflated
-                                        ? "Inclut une part d'administration et profit, décocher pour éditer"
-                                        : undefined}>
-                                      <strong style={styles.amountStrong}>{displayedTotal.toFixed(2)} $</strong>
-                                    </td>
-                                    {/* Note */}
-                                    <td style={{ ...styles.td, width: colWidths.note }}>
-                                      <input value={edit.note ?? ligne.note ?? ""}
-                                        onChange={(e) => updateEdit(ligne.id, "note", e.target.value)}
-                                        style={styles.input} placeholder="Note..." />
-                                    </td>
-                                    {/* Actions */}
-                                    <td style={{ ...styles.td, width: colWidths.actions, whiteSpace: "nowrap" }}>
-                                      <button className="adision-btn-add-line" style={styles.btnAddRow} onClick={() => ajouterLigneApres(ligne)}>
-                                        + Ligne
-                                      </button>
-                                      {peutSupprimer && (
-                                        <button className="adision-btn-row-delete" onClick={() => supprimerLigne(ligne.id)} style={styles.btnDelete}>
-                                          ✕
-                                        </button>
-                                      )}
-                                    </td>
+                                  <tr key={ligne.id} className="adision-budget-row" style={baseRowStyle}>
+                                    {visibleColumns.map((col) => renderBudgetCell({
+                                      col, ligne, row, edit, isActive,
+                                    }))}
                                   </tr>
                                 );
                               })}
@@ -1893,25 +2220,34 @@ export default function App() {
                       </span>
                     </div>
                   </div>
-                  {/* Ventilation matériel / M-O / sous-traitant — utile pour
-                      découper le devis lors d'une soumission. Pré-ajustement
-                      et hors taxes, c'est un breakdown indicatif. */}
+                  {/* Ventilation 3 sections : matériaux / M-O / sous-traitant.
+                      Utile pour découper un devis et afficher au client le
+                      coût par poste. Post-ajust % par section, pré-taxes. */}
                   <div style={{
                     background: "#f8fafc", borderTop: "1px solid #e2e8f0",
                     padding: "12px 24px", fontSize: 13, color: "#475569",
                   }}>
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0" }}>
-                      <span>Dont matériel</span>
-                      <span>{breakdownTotals.materiel.toLocaleString("fr-CA",
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ width: 10, height: 10, borderRadius: 2, background: BUDGET_SECTIONS.materiaux.bg }} />
+                        Coût total matériaux
+                      </span>
+                      <span>{breakdownTotals.materiaux.toLocaleString("fr-CA",
                         { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $</span>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0" }}>
-                      <span>Dont main-d'œuvre</span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ width: 10, height: 10, borderRadius: 2, background: BUDGET_SECTIONS.mainOeuvre.bg }} />
+                        Coût total main-d'œuvre
+                      </span>
                       <span>{breakdownTotals.mo.toLocaleString("fr-CA",
                         { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $</span>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0" }}>
-                      <span>Dont sous-traitant</span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ width: 10, height: 10, borderRadius: 2, background: BUDGET_SECTIONS.sousTraitant.bg }} />
+                        Coût total sous-traitant
+                      </span>
                       <span>{breakdownTotals.st.toLocaleString("fr-CA",
                         { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $</span>
                     </div>
