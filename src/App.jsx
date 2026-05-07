@@ -427,6 +427,12 @@ export default function App() {
   const [colVisibility, setColVisibility] = useState(colVisibilityDefault);
   const widthsKey = `adbud_col_widths_${user?.id ?? "anon"}`;
   const visibilityKey = `adbud_col_visibility_${user?.id ?? "anon"}`;
+  const notesVisibleKey = `adbud_notes_visible_${user?.id ?? "anon"}`;
+
+  // Visibilité de la zone Notes du projet (textarea cachable). Le titre
+  // "Notes du projet" reste toujours affiché pour servir de point de
+  // ré-ouverture.
+  const [notesVisible, setNotesVisible] = useState(true);
 
   // (Re)charge largeurs + visibilité quand l'user change (login).
   useEffect(() => {
@@ -438,6 +444,10 @@ export default function App() {
       const v = localStorage.getItem(visibilityKey);
       setColVisibility(v ? { ...colVisibilityDefault, ...JSON.parse(v) } : colVisibilityDefault);
     } catch { setColVisibility(colVisibilityDefault); }
+    try {
+      const n = localStorage.getItem(notesVisibleKey);
+      setNotesVisible(n === null ? true : n === "true");
+    } catch { setNotesVisible(true); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
@@ -447,6 +457,9 @@ export default function App() {
   useEffect(() => {
     try { localStorage.setItem(visibilityKey, JSON.stringify(colVisibility)); } catch {}
   }, [colVisibility, visibilityKey]);
+  useEffect(() => {
+    try { localStorage.setItem(notesVisibleKey, String(notesVisible)); } catch {}
+  }, [notesVisible, notesVisibleKey]);
 
   function startColResize(e, key) {
     e.preventDefault();
@@ -1925,18 +1938,40 @@ export default function App() {
             <div style={styles.statBadge}>Surface gypse : {surfaceGypse.toFixed(2)} pi²</div>
           </div>
 
-          <div className="adision-card" style={{ padding: "20px 24px", marginBottom: 24 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600,
-                            color: "#1e3a8a", marginBottom: 10,
-                            textTransform: "uppercase", letterSpacing: "0.5px" }}>
-              Notes du projet
-            </label>
-            <textarea value={notes} onChange={(e) => updateNotes(e.target.value)}
-              placeholder="Notes, contexte, rappels pour ce projet…"
-              style={{ width: "100%", minHeight: 80, padding: "12px 14px", fontSize: 14,
-                       color: "#0f172a", fontFamily: "inherit", borderRadius: 6,
-                       border: "1px solid #e2e8f0", background: "#ffffff",
-                       resize: "vertical", boxSizing: "border-box", outline: "none" }} />
+          <div className="adision-card" style={{
+            padding: notesVisible ? "20px 24px" : "12px 24px",
+            marginBottom: 24,
+          }}>
+            <div style={{ display: "flex", alignItems: "center",
+                          justifyContent: "space-between",
+                          marginBottom: notesVisible ? 10 : 0 }}>
+              <label style={{ fontSize: 13, fontWeight: 600,
+                              color: "#1e3a8a",
+                              textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                Notes du projet
+              </label>
+              <span
+                onClick={() => setNotesVisible((v) => !v)}
+                title={notesVisible ? "Cacher les notes" : "Afficher les notes"}
+                style={{
+                  cursor: "pointer", fontSize: 16, color: "#991b1b",
+                  userSelect: "none", padding: "2px 6px",
+                  lineHeight: 1, opacity: 0.85,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.85"; }}
+              >
+                👁
+              </span>
+            </div>
+            {notesVisible && (
+              <textarea value={notes} onChange={(e) => updateNotes(e.target.value)}
+                placeholder="Notes, contexte, rappels pour ce projet…"
+                style={{ width: "100%", minHeight: 80, padding: "12px 14px", fontSize: 14,
+                         color: "#0f172a", fontFamily: "inherit", borderRadius: 6,
+                         border: "1px solid #e2e8f0", background: "#ffffff",
+                         resize: "vertical", boxSizing: "border-box", outline: "none" }} />
+            )}
           </div>
 
           {loading ? <p style={styles.loading}>Chargement…</p> : (
