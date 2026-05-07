@@ -2079,7 +2079,6 @@ export default function App() {
                             const sectionRowVisible = sectionVisible.materiaux || sectionVisible.mainOeuvre || sectionVisible.sousTraitant;
                             const prev = idx > 0 ? visibleColumns[idx - 1] : null;
                             const boundary = isSectionBoundary(col, prev);
-                            const showEye = !REQUIRED_COL_KEYS.has(col.key);
                             const canResize = col.key !== "actif";
                             return (
                               <th key={col.key} style={{
@@ -2088,30 +2087,10 @@ export default function App() {
                                 position: "sticky",
                                 top: sectionRowVisible ? 32 : 0,
                                 zIndex: 10,
-                                paddingRight: showEye ? 24 : undefined,
                                 ...(sectBg ? { background: sectBg, color: "#0f172a" } : {}),
                                 ...(boundary ? { borderLeft: SECTION_BORDER } : {}),
                               }}>
                                 {col.label}
-                                {showEye && (
-                                  <span
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      toggleColVisibility(col.key);
-                                    }}
-                                    title="Cacher cette colonne"
-                                    style={{
-                                      position: "absolute", right: 10, top: "50%",
-                                      transform: "translateY(-50%)",
-                                      cursor: "pointer", fontSize: 12, opacity: 0.55,
-                                      userSelect: "none", padding: "2px 4px",
-                                    }}
-                                    onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
-                                    onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.55"; }}
-                                  >
-                                    👁
-                                  </span>
-                                )}
                                 {canResize && (
                                   <div onMouseDown={(e) => startColResize(e, col.key)}
                                     style={{
@@ -2122,6 +2101,54 @@ export default function App() {
                                     onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(148,163,184,0.6)"; }}
                                     onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
                                     title="Glisser pour redimensionner" />
+                                )}
+                              </th>
+                            );
+                          })}
+                        </tr>
+                        {/* Rangée 3 : œil 👁 par colonne (sauf colonnes
+                            obligatoires). Cellule cliquable = toggle de
+                            visibilité. Sticky comme les 2 rangées au-dessus. */}
+                        <tr>
+                          {visibleColumns.map((col, idx) => {
+                            const sectionRowVisible = sectionVisible.materiaux || sectionVisible.mainOeuvre || sectionVisible.sousTraitant;
+                            const prev = idx > 0 ? visibleColumns[idx - 1] : null;
+                            const boundary = isSectionBoundary(col, prev);
+                            const showEye = !REQUIRED_COL_KEYS.has(col.key);
+                            // Top = rangée labels (32px) + hauteur labels (~30px)
+                            // ; recalé à 32 si la rangée sections est cachée.
+                            const top = sectionRowVisible ? 62 : 30;
+                            return (
+                              <th key={col.key} style={{
+                                width: colWidths[col.key],
+                                position: "sticky",
+                                top,
+                                zIndex: 9,
+                                background: "#f8fafc",
+                                borderBottom: "1px solid #e2e8f0",
+                                padding: "4px 0",
+                                textAlign: "center",
+                                fontWeight: "normal",
+                                ...(boundary ? { borderLeft: SECTION_BORDER } : {}),
+                              }}>
+                                {showEye && (
+                                  <span
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleColVisibility(col.key);
+                                    }}
+                                    title="Cacher cette colonne"
+                                    style={{
+                                      cursor: "pointer", fontSize: 15,
+                                      color: "#991b1b", userSelect: "none",
+                                      display: "inline-block", padding: "2px 6px",
+                                      lineHeight: 1, opacity: 0.85,
+                                    }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.85"; }}
+                                  >
+                                    👁
+                                  </span>
                                 )}
                               </th>
                             );
