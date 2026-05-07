@@ -93,9 +93,6 @@ const BUDGET_COLUMNS = [
 
 const SOUS_TRAITANT_TYPES = ["Budget", "Soumission", "BSDQ", "Allocation"];
 
-// Colonnes obligatoires : pas d'œil 👁 dans leur header (impossible à cacher
-// individuellement). Reste accessible via le menu 👁 Colonnes pour cohérence.
-const REQUIRED_COL_KEYS = new Set(["actif", "description", "total", "actions"]);
 // Style des bordures qui marquent les frontières entre les 3 sections —
 // posé sur le borderLeft de la première colonne d'une nouvelle zone (qu'elle
 // soit une section ou la zone commune après les sections).
@@ -481,7 +478,20 @@ export default function App() {
     setColVisibility(Object.fromEntries(BUDGET_COLUMNS.map((c) => [c.key, visible.has(c.key)])));
   }
   function toggleColVisibility(key) {
-    setColVisibility((prev) => ({ ...prev, [key]: !prev[key] }));
+    setColVisibility((prev) => {
+      const willBeVisible = !prev[key];
+      if (!willBeVisible) {
+        // Refuse de cacher la dernière colonne visible. Garde-fou : sans ça
+        // l'user perd tout repère et doit forcément passer par le menu.
+        const remaining = BUDGET_COLUMNS.filter((c) => c.key !== key && prev[c.key]);
+        if (remaining.length === 0) {
+          setAutosaveStatus("Au moins une colonne doit rester visible");
+          setTimeout(() => setAutosaveStatus(""), 2500);
+          return prev;
+        }
+      }
+      return { ...prev, [key]: willBeVisible };
+    });
   }
   function resetColWidths() {
     setColWidths(colWidthsDefault);
@@ -2106,15 +2116,13 @@ export default function App() {
                             );
                           })}
                         </tr>
-                        {/* Rangée 3 : œil 👁 par colonne (sauf colonnes
-                            obligatoires). Cellule cliquable = toggle de
-                            visibilité. Sticky comme les 2 rangées au-dessus. */}
+                        {/* Rangée 3 : œil 👁 par colonne, toutes les colonnes
+                            sont cachables (le toggle refuse la dernière). */}
                         <tr>
                           {visibleColumns.map((col, idx) => {
                             const sectionRowVisible = sectionVisible.materiaux || sectionVisible.mainOeuvre || sectionVisible.sousTraitant;
                             const prev = idx > 0 ? visibleColumns[idx - 1] : null;
                             const boundary = isSectionBoundary(col, prev);
-                            const showEye = !REQUIRED_COL_KEYS.has(col.key);
                             // Top = rangée labels (32px) + hauteur labels (~30px)
                             // ; recalé à 32 si la rangée sections est cachée.
                             const top = sectionRowVisible ? 62 : 30;
@@ -2131,25 +2139,23 @@ export default function App() {
                                 fontWeight: "normal",
                                 ...(boundary ? { borderLeft: SECTION_BORDER } : {}),
                               }}>
-                                {showEye && (
-                                  <span
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      toggleColVisibility(col.key);
-                                    }}
-                                    title="Cacher cette colonne"
-                                    style={{
-                                      cursor: "pointer", fontSize: 15,
-                                      color: "#991b1b", userSelect: "none",
-                                      display: "inline-block", padding: "2px 6px",
-                                      lineHeight: 1, opacity: 0.85,
-                                    }}
-                                    onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
-                                    onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.85"; }}
-                                  >
-                                    👁
-                                  </span>
-                                )}
+                                <span
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleColVisibility(col.key);
+                                  }}
+                                  title="Cacher cette colonne"
+                                  style={{
+                                    cursor: "pointer", fontSize: 15,
+                                    color: "#991b1b", userSelect: "none",
+                                    display: "inline-block", padding: "2px 6px",
+                                    lineHeight: 1, opacity: 0.85,
+                                  }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.85"; }}
+                                >
+                                  👁
+                                </span>
                               </th>
                             );
                           })}
