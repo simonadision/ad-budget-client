@@ -2072,6 +2072,19 @@ export default function App() {
                       width: visibleColumns.reduce((s, c) => s + (colWidths[c.key] || c.defaultWidth), 0),
                       tableLayout: "fixed",
                     }}>
+                      {/* <colgroup> = source de vérité unique des largeurs.
+                          Avec table-layout: fixed, le navigateur peut sinon
+                          se fier à la 1re rangée du <thead> qui contient des
+                          colspan de section — ce qui rendait le drag d'une
+                          colonne impossible à isoler (toutes redistribuaient).
+                          Le <col> explicite par colonne contourne ça. */}
+                      <colgroup>
+                        {visibleColumns.map((col) => (
+                          <col key={col.key} style={{
+                            width: colWidths[col.key] || col.defaultWidth,
+                          }} />
+                        ))}
+                      </colgroup>
                       <thead>
                         {/* Rangée 1 : headers de section avec colspan, masquée
                             si toutes les sections sont cachées. */}
