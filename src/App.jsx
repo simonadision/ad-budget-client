@@ -1957,9 +1957,8 @@ export default function App() {
 
           <div className="adision-card" style={{ padding: "20px 24px", marginBottom: 24 }}>
             <div style={{ display: "flex", alignItems: "center",
-                          justifyContent: "space-between",
-                          marginBottom: notesVisible ? 10 : 0,
-                          position: "relative" }}>
+                          justifyContent: "flex-start", gap: 8,
+                          marginBottom: notesVisible ? 10 : 0 }}>
               <label style={{ fontSize: 13, fontWeight: 600,
                               color: "#1e3a8a",
                               textTransform: "uppercase", letterSpacing: "0.5px" }}>
