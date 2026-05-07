@@ -58,9 +58,12 @@ async function processLogoFile(file) {
 // main-d'œuvre et sous-traitant. Chaque section a ses inputs, son ajustement %
 // et son sous-total calculé. Le total ligne est la somme des 3 sous-totaux.
 const BUDGET_SECTIONS = {
-  materiaux:    { label: "MATÉRIAUX",    bg: "#e3f2fd", bgRow: "#f4faff" },
-  mainOeuvre:   { label: "MAIN-D'ŒUVRE", bg: "#e8f5e9", bgRow: "#f5fbf5" },
-  sousTraitant: { label: "SOUS-TRAITANT", bg: "#fff8e1", bgRow: "#fffdf3" },
+  // Palette Adision pâle : dérivée du bleu / rouge / vert de marque
+  // (#1F3A8A / #E94B4B / #0F9D7A). Une seule teinte par section,
+  // appliquée uniformément aux 3 rangées de header et au tbody.
+  materiaux:    { label: "MATÉRIAUX",    bg: "#E3E7F4", bgRow: "#E3E7F4" },
+  mainOeuvre:   { label: "MAIN-D'ŒUVRE", bg: "#FCE5E5", bgRow: "#FCE5E5" },
+  sousTraitant: { label: "SOUS-TRAITANT", bg: "#DDF2EC", bgRow: "#DDF2EC" },
 };
 
 const BUDGET_COLUMNS = [
@@ -2159,13 +2162,17 @@ export default function App() {
                             // Top = rangée labels (32px) + hauteur labels (~30px)
                             // ; recalé à 32 si la rangée sections est cachée.
                             const top = sectionRowVisible ? 62 : 30;
+                            // Fond aligné avec la teinte de section (palette
+                            // Adision pâle) — gris clair par défaut pour les
+                            // colonnes communes.
+                            const eyeBg = col.group ? BUDGET_SECTIONS[col.group].bg : "#f8fafc";
                             return (
                               <th key={col.key} style={{
                                 width: colWidths[col.key],
                                 position: "sticky",
                                 top,
                                 zIndex: 9,
-                                background: "#f8fafc",
+                                background: eyeBg,
                                 borderBottom: "1px solid #e2e8f0",
                                 // padding-left identique à styles.th (12px)
                                 // pour aligner l'œil avec le début du libellé
