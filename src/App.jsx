@@ -8,6 +8,7 @@ import {
   redirectToLogout,
 } from "./auth.js";
 import ModuleSwitcher from "./ModuleSwitcher.jsx";
+import ProjectDashboard from "./components/budget/ProjectDashboard.jsx";
 
 const API_URL = "https://web-production-3381d.up.railway.app";
 
@@ -436,6 +437,9 @@ export default function App() {
   // "Notes du projet" reste toujours affiché pour servir de point de
   // ré-ouverture.
   const [notesVisible, setNotesVisible] = useState(true);
+
+  // Modal Dashboard projet — overlay fullscreen avec KPIs + charts.
+  const [showDashboard, setShowDashboard] = useState(false);
 
   // (Re)charge largeurs + visibilité quand l'user change (login).
   useEffect(() => {
@@ -1927,6 +1931,14 @@ export default function App() {
               </button>
               <button
                 className="ad-btn-secondary"
+                onClick={() => setShowDashboard(true)}
+                style={styles.btnSecondary}
+                title="Ouvrir le dashboard du projet"
+              >
+                📊 Dashboard
+              </button>
+              <button
+                className="ad-btn-secondary"
                 onClick={() => {
                   const t = getJwt();
                   const qs = t ? `?token=${encodeURIComponent(t)}` : "";
@@ -2414,6 +2426,13 @@ export default function App() {
             </div>
           )}
         </div>
+        {showDashboard && (
+          <ProjectDashboard
+            projet={projetActif}
+            budgetLignes={budgetLignes}
+            onClose={() => setShowDashboard(false)}
+          />
+        )}
         {showInfoModal && (
           <div style={{
             position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
