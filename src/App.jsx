@@ -1873,7 +1873,25 @@ export default function App() {
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
             <div>
-              <h1 style={{ ...styles.pageTitle, marginBottom: 2 }}>{projetActif?.nom}</h1>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+                <h1 style={{ ...styles.pageTitle, marginBottom: 2 }}>{projetActif?.nom}</h1>
+                {/* Toggle des notes — œil ici (et plus dans la zone Notes
+                    elle-même) pour rester accessible quand le bloc Notes
+                    est replié. */}
+                <span
+                  onClick={() => setNotesVisible((v) => !v)}
+                  title={notesVisible ? "Cacher les notes" : "Afficher les notes"}
+                  style={{
+                    cursor: "pointer", fontSize: 18, color: "#991b1b",
+                    userSelect: "none", padding: "2px 6px",
+                    lineHeight: 1, opacity: 0.85, alignSelf: "center",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.85"; }}
+                >
+                  👁
+                </span>
+              </div>
               {projetActif?.client && <p style={{ color: "#64748b", margin: 0, fontSize: 13 }}>👤 {projetActif.client}</p>}
               {projetActif?.adresse && <p style={{ color: "#64748b", margin: "2px 0 0", fontSize: 13 }}>📍 {projetActif.adresse}</p>}
             </div>
@@ -1938,41 +1956,21 @@ export default function App() {
             <div style={styles.statBadge}>Surface gypse : {surfaceGypse.toFixed(2)} pi²</div>
           </div>
 
-          <div className="adision-card" style={{
-            padding: notesVisible ? "20px 24px" : "12px 24px",
-            marginBottom: 24,
-          }}>
-            <div style={{ display: "flex", alignItems: "center",
-                          justifyContent: "space-between",
-                          marginBottom: notesVisible ? 10 : 0 }}>
-              <label style={{ fontSize: 13, fontWeight: 600,
-                              color: "#1e3a8a",
+          {notesVisible && (
+            <div className="adision-card" style={{ padding: "20px 24px", marginBottom: 24 }}>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600,
+                              color: "#1e3a8a", marginBottom: 10,
                               textTransform: "uppercase", letterSpacing: "0.5px" }}>
                 Notes du projet
               </label>
-              <span
-                onClick={() => setNotesVisible((v) => !v)}
-                title={notesVisible ? "Cacher les notes" : "Afficher les notes"}
-                style={{
-                  cursor: "pointer", fontSize: 16, color: "#991b1b",
-                  userSelect: "none", padding: "2px 6px",
-                  lineHeight: 1, opacity: 0.85,
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.85"; }}
-              >
-                👁
-              </span>
-            </div>
-            {notesVisible && (
               <textarea value={notes} onChange={(e) => updateNotes(e.target.value)}
                 placeholder="Notes, contexte, rappels pour ce projet…"
                 style={{ width: "100%", minHeight: 80, padding: "12px 14px", fontSize: 14,
                          color: "#0f172a", fontFamily: "inherit", borderRadius: 6,
                          border: "1px solid #e2e8f0", background: "#ffffff",
                          resize: "vertical", boxSizing: "border-box", outline: "none" }} />
-            )}
-          </div>
+            </div>
+          )}
 
           {loading ? <p style={styles.loading}>Chargement…</p> : (
             <div style={styles.card}>
