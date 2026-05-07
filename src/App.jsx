@@ -1882,25 +1882,7 @@ export default function App() {
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
             <div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-                <h1 style={{ ...styles.pageTitle, marginBottom: 2 }}>{projetActif?.nom}</h1>
-                {/* Toggle des notes — œil ici (et plus dans la zone Notes
-                    elle-même) pour rester accessible quand le bloc Notes
-                    est replié. */}
-                <span
-                  onClick={() => setNotesVisible((v) => !v)}
-                  title={notesVisible ? "Cacher les notes" : "Afficher les notes"}
-                  style={{
-                    cursor: "pointer", fontSize: 18, color: "#991b1b",
-                    userSelect: "none", padding: "2px 6px",
-                    lineHeight: 1, opacity: 0.85, alignSelf: "center",
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.85"; }}
-                >
-                  👁
-                </span>
-              </div>
+              <h1 style={{ ...styles.pageTitle, marginBottom: 2 }}>{projetActif?.nom}</h1>
               {projetActif?.client && <p style={{ color: "#64748b", margin: 0, fontSize: 13 }}>👤 {projetActif.client}</p>}
               {projetActif?.adresse && <p style={{ color: "#64748b", margin: "2px 0 0", fontSize: 13 }}>📍 {projetActif.adresse}</p>}
             </div>
@@ -1983,88 +1965,22 @@ export default function App() {
                               textTransform: "uppercase", letterSpacing: "0.5px" }}>
                 Notes du projet
               </label>
-              {/* Bouton 👁 Colonnes : ouvre le menu de visibilité des
-                  colonnes du tableau Budget. Toujours rendu (le label NOTES
-                  DU PROJET reste affiché même quand le textarea est replié)
-                  pour rester accessible. */}
-              <button
-                onClick={() => setColsMenuOpen((v) => !v)}
-                className="ad-btn-secondary" style={styles.btnSecondary}
-                title="Choisir les colonnes visibles du tableau"
+              {/* Toggle des notes : pilote le textarea juste en-dessous.
+                  Inline avec le label car c'est ce label qui décrit la zone
+                  affichée/cachée. */}
+              <span
+                onClick={() => setNotesVisible((v) => !v)}
+                title={notesVisible ? "Cacher les notes" : "Afficher les notes"}
+                style={{
+                  cursor: "pointer", fontSize: 18, color: "#991b1b",
+                  userSelect: "none", padding: "2px 6px",
+                  lineHeight: 1, opacity: 0.85,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.85"; }}
               >
-                👁 Colonnes ({visibleColumns.length}/{BUDGET_COLUMNS.length})
-              </button>
-              {colsMenuOpen && (
-                  <>
-                    <div onClick={() => setColsMenuOpen(false)}
-                      style={{ position: "fixed", inset: 0, zIndex: 49 }} />
-                    <div style={{
-                      position: "absolute", top: "100%", right: 0, marginTop: 4,
-                      background: "#fff", border: "1px solid #cbd5e1",
-                      borderRadius: 8, boxShadow: "0 8px 24px rgba(15,23,42,0.15)",
-                      padding: 12, minWidth: 280, zIndex: 50, maxHeight: "70vh",
-                      overflowY: "auto",
-                    }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: "#1e3a8a",
-                                    textTransform: "uppercase", letterSpacing: 0.5,
-                                    marginBottom: 6 }}>Présets</div>
-                      {Object.entries(COL_PRESETS).map(([k, p]) => (
-                        <button key={k} onClick={() => applyColPreset(k)}
-                          style={{ display: "block", width: "100%", textAlign: "left",
-                                   padding: "5px 8px", fontSize: 13, background: "transparent",
-                                   border: "none", cursor: "pointer", borderRadius: 4 }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = "#eff6ff"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
-                          {p.label}
-                        </button>
-                      ))}
-                      <div style={{ borderTop: "1px solid #e2e8f0", margin: "8px 0" }} />
-                      <div style={{ fontSize: 11, fontWeight: 700, color: "#1e3a8a",
-                                    textTransform: "uppercase", letterSpacing: 0.5,
-                                    marginBottom: 6 }}>Colonnes</div>
-                      {BUDGET_COLUMNS.filter((c) => c.group === null).map((col) => (
-                        <label key={col.key} style={{ display: "flex", alignItems: "center",
-                                                      gap: 8, padding: "3px 0",
-                                                      fontSize: 13, cursor: "pointer" }}>
-                          <input type="checkbox" checked={!!colVisibility[col.key]}
-                            onChange={() => toggleColVisibility(col.key)}
-                            style={{ accentColor: "#10b981", cursor: "pointer" }} />
-                          {col.label}
-                        </label>
-                      ))}
-                      {Object.entries(BUDGET_SECTIONS).map(([sk, sect]) => (
-                        <div key={sk} style={{ marginTop: 6,
-                                               borderTop: "1px dashed #e2e8f0", paddingTop: 6 }}>
-                          <div style={{ fontSize: 10, fontWeight: 700, color: "#475569",
-                                        textTransform: "uppercase", letterSpacing: 0.5,
-                                        marginBottom: 4,
-                                        display: "flex", alignItems: "center", gap: 6 }}>
-                            <span style={{ width: 10, height: 10, borderRadius: 2,
-                                           background: sect.bg }} />
-                            {sect.label}
-                          </div>
-                          {BUDGET_COLUMNS.filter((c) => c.group === sk).map((col) => (
-                            <label key={col.key}
-                              style={{ display: "flex", alignItems: "center",
-                                       gap: 8, padding: "3px 0", fontSize: 13, cursor: "pointer" }}>
-                              <input type="checkbox" checked={!!colVisibility[col.key]}
-                                onChange={() => toggleColVisibility(col.key)}
-                                style={{ accentColor: "#10b981", cursor: "pointer" }} />
-                              {col.label}
-                            </label>
-                          ))}
-                        </div>
-                      ))}
-                      <div style={{ borderTop: "1px solid #e2e8f0", margin: "8px 0" }} />
-                      <button onClick={resetColWidths}
-                        className="ad-btn-secondary"
-                        style={{ ...styles.btnSecondary, width: "100%", padding: "5px 8px",
-                                 fontSize: 12 }}>
-                        Réinitialiser largeurs
-                      </button>
-                    </div>
-                  </>
-              )}
+                👁
+              </span>
             </div>
             {notesVisible && (
               <textarea value={notes} onChange={(e) => updateNotes(e.target.value)}
@@ -2086,9 +2002,88 @@ export default function App() {
                 <p style={styles.emptyMsg}>Aucun item dans ce projet.</p>
               ) : (
                 <>
-                  {/* Le bouton 👁 Colonnes est désormais inline avec le label
-                      "Notes du projet" plus haut — la barre dédiée a été
-                      retirée pour gagner de la place verticale. */}
+                  {/* Barre d'outils du tableau Budget — bouton Colonnes
+                      (présets + checkboxes par section + reset largeurs). */}
+                  <div style={{ position: "relative", display: "flex",
+                                justifyContent: "flex-end", padding: "8px 16px",
+                                borderBottom: "1px solid #e2e8f0", background: "#fff" }}>
+                    <button onClick={() => setColsMenuOpen((v) => !v)}
+                      className="ad-btn-secondary" style={styles.btnSecondary}
+                      title="Choisir les colonnes visibles du tableau">
+                      👁 Colonnes ({visibleColumns.length}/{BUDGET_COLUMNS.length})
+                    </button>
+                    {colsMenuOpen && (
+                      <>
+                        <div onClick={() => setColsMenuOpen(false)}
+                          style={{ position: "fixed", inset: 0, zIndex: 49 }} />
+                        <div style={{
+                          position: "absolute", top: "100%", right: 16, marginTop: 4,
+                          background: "#fff", border: "1px solid #cbd5e1",
+                          borderRadius: 8, boxShadow: "0 8px 24px rgba(15,23,42,0.15)",
+                          padding: 12, minWidth: 280, zIndex: 50, maxHeight: "70vh",
+                          overflowY: "auto",
+                        }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: "#1e3a8a",
+                                        textTransform: "uppercase", letterSpacing: 0.5,
+                                        marginBottom: 6 }}>Présets</div>
+                          {Object.entries(COL_PRESETS).map(([k, p]) => (
+                            <button key={k} onClick={() => applyColPreset(k)}
+                              style={{ display: "block", width: "100%", textAlign: "left",
+                                       padding: "5px 8px", fontSize: 13, background: "transparent",
+                                       border: "none", cursor: "pointer", borderRadius: 4 }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = "#eff6ff"; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
+                              {p.label}
+                            </button>
+                          ))}
+                          <div style={{ borderTop: "1px solid #e2e8f0", margin: "8px 0" }} />
+                          <div style={{ fontSize: 11, fontWeight: 700, color: "#1e3a8a",
+                                        textTransform: "uppercase", letterSpacing: 0.5,
+                                        marginBottom: 6 }}>Colonnes</div>
+                          {BUDGET_COLUMNS.filter((c) => c.group === null).map((col) => (
+                            <label key={col.key} style={{ display: "flex", alignItems: "center",
+                                                          gap: 8, padding: "3px 0",
+                                                          fontSize: 13, cursor: "pointer" }}>
+                              <input type="checkbox" checked={!!colVisibility[col.key]}
+                                onChange={() => toggleColVisibility(col.key)}
+                                style={{ accentColor: "#10b981", cursor: "pointer" }} />
+                              {col.label}
+                            </label>
+                          ))}
+                          {Object.entries(BUDGET_SECTIONS).map(([sk, sect]) => (
+                            <div key={sk} style={{ marginTop: 6,
+                                                   borderTop: "1px dashed #e2e8f0", paddingTop: 6 }}>
+                              <div style={{ fontSize: 10, fontWeight: 700, color: "#475569",
+                                            textTransform: "uppercase", letterSpacing: 0.5,
+                                            marginBottom: 4,
+                                            display: "flex", alignItems: "center", gap: 6 }}>
+                                <span style={{ width: 10, height: 10, borderRadius: 2,
+                                               background: sect.bg }} />
+                                {sect.label}
+                              </div>
+                              {BUDGET_COLUMNS.filter((c) => c.group === sk).map((col) => (
+                                <label key={col.key}
+                                  style={{ display: "flex", alignItems: "center",
+                                           gap: 8, padding: "3px 0", fontSize: 13, cursor: "pointer" }}>
+                                  <input type="checkbox" checked={!!colVisibility[col.key]}
+                                    onChange={() => toggleColVisibility(col.key)}
+                                    style={{ accentColor: "#10b981", cursor: "pointer" }} />
+                                  {col.label}
+                                </label>
+                              ))}
+                            </div>
+                          ))}
+                          <div style={{ borderTop: "1px solid #e2e8f0", margin: "8px 0" }} />
+                          <button onClick={resetColWidths}
+                            className="ad-btn-secondary"
+                            style={{ ...styles.btnSecondary, width: "100%", padding: "5px 8px",
+                                     fontSize: 12 }}>
+                            Réinitialiser largeurs
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                   <div style={{ overflowX: "auto", maxHeight: "70vh", overflowY: "auto" }}>
                     <table style={{
                       ...styles.table,
