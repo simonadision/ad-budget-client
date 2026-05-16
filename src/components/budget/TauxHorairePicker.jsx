@@ -27,6 +27,11 @@ const GROUPE_LABELS = {
   non_syndique: "Non syndiqué",
 };
 
+// Couleurs en dur. Les variables CSS --ad-* sont définies dans App.css, mais
+// App.css n'est importé NULLE PART (main.jsx ne charge que index.css) — donc
+// aucune var(--ad-*) ne se résout au runtime. Sans valeur en dur, un
+// `background: var(--ad-surface)` invalide retombe sur `transparent` (panneau
+// transparent). Valeurs reprises du :root d'App.css, alignées sur la grille.
 const S = {
   backdrop: {
     position: "fixed", inset: 0, zIndex: 2000,
@@ -35,47 +40,47 @@ const S = {
     padding: 16,
   },
   panel: {
-    background: "var(--ad-surface)", borderRadius: 12,
+    background: "#ffffff", borderRadius: 12,
     width: "92%", maxWidth: 520, maxHeight: "80vh",
     display: "flex", flexDirection: "column",
-    boxShadow: "var(--adision-shadow-modal)", overflow: "hidden",
-    fontFamily: "var(--ad-font-family)",
+    boxShadow: "0 20px 40px rgba(15,23,42,0.15)", overflow: "hidden",
+    fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
   },
   header: {
     display: "flex", alignItems: "center", justifyContent: "space-between",
-    padding: "13px 18px", background: "var(--ad-primary)", color: "#fff",
+    padding: "13px 18px", background: "#1e3a8a", color: "#fff",
   },
   title: { fontSize: 15, fontWeight: 700, letterSpacing: "-0.2px" },
   closeBtn: {
     background: "transparent", border: "none", color: "#fff",
     fontSize: 16, lineHeight: 1, cursor: "pointer", padding: 2,
   },
-  searchWrap: { padding: "12px 16px", borderBottom: "1px solid var(--ad-border)" },
+  searchWrap: { padding: "12px 16px", borderBottom: "1px solid #e2e8f0" },
   searchInput: {
-    padding: "7px 10px", border: "1px solid var(--ad-border-strong)",
+    padding: "7px 10px", border: "1px solid #cbd5e1",
     borderRadius: 6, fontSize: 13, width: "100%", boxSizing: "border-box",
-    color: "var(--ad-text)", background: "var(--ad-surface)", outline: "none",
+    color: "#0f172a", background: "#ffffff", outline: "none",
   },
   body: { overflowY: "auto", padding: "4px 0 8px" },
   msg: {
     padding: 24, textAlign: "center", fontSize: 13,
-    color: "var(--ad-text-faint)", fontStyle: "italic",
+    color: "#94a3b8", fontStyle: "italic",
   },
   errMsg: {
-    padding: 24, textAlign: "center", fontSize: 13, color: "var(--ad-error)",
+    padding: 24, textAlign: "center", fontSize: 13, color: "#ef4444",
   },
   groupHeader: {
     padding: "8px 16px 4px", fontSize: 11, fontWeight: 700,
     textTransform: "uppercase", letterSpacing: "0.5px",
-    color: "var(--ad-text-subtle)", background: "var(--ad-bg-soft)",
+    color: "#64748b", background: "#f1f5f9",
   },
   row: {
     display: "flex", alignItems: "baseline", justifyContent: "space-between",
     gap: 12, padding: "7px 16px", cursor: "pointer", fontSize: 13,
   },
-  rowMetier: { color: "var(--ad-text)" },
-  rowQual: { color: "var(--ad-text-subtle)" },
-  rowTaux: { fontWeight: 700, color: "var(--ad-primary)", whiteSpace: "nowrap" },
+  rowMetier: { color: "#0f172a" },
+  rowQual: { color: "#64748b" },
+  rowTaux: { fontWeight: 700, color: "#1e3a8a", whiteSpace: "nowrap" },
 };
 
 export default function TauxHorairePicker({ open, apiUrl, onSelect, onClose }) {
@@ -217,7 +222,7 @@ export default function TauxHorairePicker({ open, apiUrl, onSelect, onClose }) {
                   }}
                   style={S.row}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "var(--ad-blue-soft)";
+                    e.currentTarget.style.background = "#eef4ff";
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = "transparent";
