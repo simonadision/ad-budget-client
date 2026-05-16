@@ -9,6 +9,7 @@ import {
 } from "./auth.js";
 import ModuleSwitcher from "./ModuleSwitcher.jsx";
 import ProjectDashboard from "./components/budget/ProjectDashboard.jsx";
+import TauxHorairePicker from "./components/budget/TauxHorairePicker.jsx";
 
 const API_URL = "https://web-production-3381d.up.railway.app";
 
@@ -271,6 +272,11 @@ const styles = {
     padding: "5px 10px", background: "#ffffff", color: "#10b981",
     border: "1px solid #10b981", borderRadius: 6, fontSize: 11, fontWeight: 600,
     cursor: "pointer", whiteSpace: "nowrap", marginRight: 4,
+  },
+  btnTauxPicker: {
+    flexShrink: 0, padding: "5px 7px", background: "var(--ad-surface)",
+    color: "var(--ad-primary)", border: "1px solid var(--ad-border-blue)",
+    borderRadius: 5, fontSize: 12, lineHeight: 1, cursor: "pointer",
   },
   btnToggleActive: {
     padding: "4px 8px", background: "#10b981", color: "#fff", border: "none",
@@ -593,6 +599,10 @@ export default function App() {
   // (cf. ouvrirProjet). `subOpenId` = id de la ligne dont le dropdown est visible.
   const [sousTraitantSuggestions, setSousTraitantSuggestions] = useState([]);
   const [subOpenId, setSubOpenId] = useState(null);
+
+  // `pickerLigneId` = id de la ligne dont le TauxHorairePicker est ouvert
+  // (un seul à la fois, pattern subOpenId). null = picker fermé.
+  const [pickerLigneId, setPickerLigneId] = useState(null);
 
   const surfaceMur = useMemo(() => {
     return normalizeNumber(globalParams.hauteurCloisons) * normalizeNumber(globalParams.longueurCloisons);
@@ -1735,10 +1745,16 @@ export default function App() {
       case "tauxHoraire":
         return (
           <td key={col.key} style={tdBase}>
-            <input type="text" inputMode="decimal"
-              value={edit.tauxHoraire ?? String(parseFloat(ligne.taux_horaire ?? 0))}
-              onChange={(e) => updateEdit(ligne.id, "tauxHoraire", e.target.value)}
-              style={styles.input} />
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <input type="text" inputMode="decimal"
+                value={edit.tauxHoraire ?? String(parseFloat(ligne.taux_horaire ?? 0))}
+                onChange={(e) => updateEdit(ligne.id, "tauxHoraire", e.target.value)}
+                style={styles.input} />
+              <button type="button"
+                onClick={() => setPickerLigneId(ligne.id)}
+                title="Choisir depuis la grille des taux"
+                style={styles.btnTauxPicker}>⊞</button>
+            </div>
           </td>
         );
       case "ajustMo":
@@ -2438,6 +2454,16 @@ export default function App() {
             onClose={() => setShowDashboard(false)}
           />
         )}
+        <TauxHorairePicker
+          open={pickerLigneId !== null}
+          apiUrl={API_URL}
+          onClose={() => setPickerLigneId(null)}
+          onSelect={(taux) => {
+            if (pickerLigneId !== null) {
+              updateEdit(pickerLigneId, "tauxHoraire", String(taux.taux_col17));
+            }
+          }}
+        />
         {showInfoModal && (
           <div style={{
             position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
